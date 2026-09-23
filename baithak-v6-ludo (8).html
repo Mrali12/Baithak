@@ -1,0 +1,2677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Baithak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://download.agora.io/sdk/release/AgoraRTC_N-4.22.2.js"></script>
+<style>
+  :root{
+    --bg:#241A26;
+    --surface:#2F2333;
+    --surface2:#3A2C40;
+    --peach:#F2A365;
+    --peach-dark:#D9884A;
+    --teal:#3FBFA0;
+    --gold:#E8C15C;
+    --text:#F3EDF0;
+    --text-dim:#B4A3B8;
+    --line:#463950;
+    --bubble-me:#3FBFA0;
+    --bubble-other:#3A2C40;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--text); font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent;}
+  h1,h2,h3,.heading{font-family:'Baloo 2',sans-serif;}
+  .app{max-width:480px; margin:0 auto; min-height:100vh; display:flex; flex-direction:column;}
+
+  /* ---------- Username gate ---------- */
+  #gate{position:fixed; inset:0; background:var(--bg); z-index:500; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:14px; padding:24px; text-align:center;}
+  #gate.hide{display:none;}
+  #gate h1{font-size:2rem; margin:0; color:var(--peach);}
+  #gate p{color:var(--text-dim); font-size:.9rem; margin:0 0 6px;}
+  #gate input{width:240px; text-align:center; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--surface); color:var(--text); font-size:1rem;}
+  #gate button{width:240px; padding:12px; border-radius:10px; border:none; background:var(--peach); color:#2A1D14; font-weight:700; font-size:1rem;}
+
+  /* ---------- Header ---------- */
+  header{padding:16px 18px 10px; display:flex; align-items:center; justify-content:space-between;}
+  header .brand{font-size:1.3rem; font-weight:700; color:var(--peach); display:flex; align-items:center; gap:6px;}
+  header .me{font-size:.8rem; color:var(--text-dim); text-align:right;}
+  header .me b{color:var(--gold);}
+
+  /* ---------- Tabs ---------- */
+  .tabs{display:flex; padding:0 14px; gap:6px;}
+  .tab{flex:1; text-align:center; padding:10px 4px; font-size:.85rem; font-weight:600; color:var(--text-dim); cursor:pointer; border-radius:10px 10px 0 0;}
+  .tab.active{color:var(--peach); background:var(--surface);}
+  .panel{display:none; flex:1; background:var(--surface); padding:14px; flex-direction:column; min-height:0;}
+  .panel.active{display:flex;}
+
+  /* ---------- Chat ---------- */
+  .room-picker{display:flex; gap:8px; margin-bottom:10px; overflow-x:auto;}
+  .room-chip{position:relative; padding:8px 14px; border-radius:20px; background:var(--surface2); font-size:.82rem; font-weight:600; white-space:nowrap; cursor:pointer; color:var(--text-dim);}
+  .room-chip.active{background:var(--peach); color:#2A1D14;}
+  .chip-dot{position:absolute; top:3px; right:5px; width:8px; height:8px; border-radius:50%; background:#EF4444; border:1.5px solid var(--surface);}
+
+  .chat-list-wrap{position:relative; flex:1; display:flex; min-height:0;}
+  .msg-list{flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding:6px 2px 10px; min-height:280px; max-height:50vh; scroll-behavior:smooth;}
+  .scroll-jump{position:absolute; left:50%; bottom:10px; transform:translate(-50%,12px); opacity:0; pointer-events:none; transition:opacity .18s, transform .18s; background:var(--peach); color:#2A1D14; border:none; border-radius:16px; padding:6px 14px; font-size:.76rem; font-weight:700; box-shadow:0 4px 10px rgba(0,0,0,.25); cursor:pointer;}
+  .scroll-jump.show{opacity:1; pointer-events:auto; transform:translate(-50%,0);}
+
+  .chat-day-sep{display:flex; justify-content:center; margin:12px 0 8px;}
+  .chat-day-sep span{font-size:.72rem; font-weight:700; color:var(--text-dim); background:var(--surface2); padding:4px 12px; border-radius:12px;}
+
+  .msg-row{display:flex; align-items:flex-end; gap:8px; margin-top:10px; max-width:100%;}
+  .msg-row.grouped{margin-top:2px;}
+  .msg-row.me{flex-direction:row-reverse;}
+  .msg-avatar{width:26px; height:26px; border-radius:50%; flex:none; display:flex; align-items:center; justify-content:center; font-size:.68rem; font-weight:800; color:#fff; text-shadow:0 1px 1px rgba(0,0,0,.2);}
+  .msg-avatar-spacer{width:26px; flex:none;}
+  .msg-bubble-wrap{display:flex; flex-direction:column; max-width:75%;}
+  .msg-row.me .msg-bubble-wrap{align-items:flex-end;}
+  .msg-who{font-size:.7rem; font-weight:700; opacity:.75; margin:0 2px 3px;}
+  .msg-bubble{position:relative; padding:8px 30px 8px 12px; border-radius:14px; font-size:.9rem; line-height:1.35; word-break:break-word; background:var(--bubble-other); border-bottom-left-radius:4px;}
+  .msg-row.me .msg-bubble{background:var(--bubble-me); color:var(--bubble-me-text, #0E2A22); border-bottom-left-radius:14px; border-bottom-right-radius:4px; padding:8px 30px 8px 12px;}
+  .msg-time{font-size:.66rem; color:var(--text-dim); margin:3px 3px 0;}
+  .msg-del{position:absolute; top:6px; right:8px; font-size:.7rem; opacity:0; cursor:pointer; color:inherit; transition:opacity .12s;}
+  .msg-bubble:hover .msg-del, .msg-bubble:active .msg-del{opacity:.55;}
+  .msg-del:hover{opacity:1 !important;}
+  @keyframes msgIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);} }
+  .msg-new{animation:msgIn .22s ease-out;}
+
+  .chat-empty{margin:auto; text-align:center; color:var(--text-dim); padding:30px 10px;}
+  .chat-empty-icon{font-size:2rem; margin-bottom:6px;}
+  .chat-empty-title{font-weight:700; color:var(--text); font-size:.95rem;}
+  .chat-empty-sub{font-size:.8rem; margin-top:2px;}
+
+  .typing-indicator{height:0; overflow:hidden; font-size:.76rem; color:var(--text-dim); font-style:italic; opacity:0; transition:opacity .15s, height .15s; padding-left:2px;}
+  .typing-indicator.show{height:18px; opacity:1;}
+
+  .msg-input-row{display:flex; gap:8px; margin-top:6px; align-items:flex-end;}
+  .msg-input-row textarea{flex:1; resize:none; max-height:110px; padding:11px 14px; border-radius:18px; border:1px solid var(--line); background:var(--surface2); color:var(--text); font-size:.9rem; font-family:inherit; line-height:1.3;}
+  .msg-input-row button{padding:0 18px; height:42px; border-radius:20px; border:none; background:var(--peach); color:#2A1D14; font-weight:700; flex:none;}
+
+  .voice-bar{display:flex; align-items:center; gap:10px; background:var(--surface2); border-radius:10px; padding:9px 12px; margin-bottom:10px;}
+  .voice-btn{border:none; border-radius:16px; padding:7px 14px; font-size:.8rem; font-weight:700; background:var(--teal); color:#0E2A22; white-space:nowrap;}
+  .voice-btn.active{background:var(--peach-dark); color:#fff;}
+  .voice-participants{font-size:.78rem; color:var(--text-dim); overflow-x:auto; white-space:nowrap;}
+
+  /* ---------- Carrom ---------- */
+  .carrom-toolbar{display:flex; align-items:center; justify-content:space-between; width:100%; max-width:480px; margin-bottom:10px; gap:8px;}
+  .carrom-modes{display:flex; gap:6px;}
+  .mode-btn{border:1px solid var(--line); background:transparent; color:var(--text-dim); font-size:.78rem; font-weight:600; padding:7px 12px; border-radius:16px;}
+  .mode-btn.active{background:var(--peach); color:#2A1D14; border-color:var(--peach);}
+  .carrom-scoreboard{display:flex; align-items:center; justify-content:space-between; width:100%; max-width:480px; margin-bottom:10px;}
+  .carrom-score-box{background:var(--surface2); border-radius:10px; padding:8px 16px; text-align:center; min-width:70px;}
+  .carrom-score-box.white-box{border-bottom:3px solid #eee;}
+  .carrom-score-box.black-box{border-bottom:3px solid #2a2a2a;}
+  .carrom-score-box .lbl{font-size:.7rem; color:var(--text-dim);}
+  .carrom-score-box .val{font-size:1.3rem; font-weight:800; font-family:'Baloo 2',sans-serif;}
+  .carrom-turn{font-size:.85rem; font-weight:700; color:var(--gold);}
+  #carromCanvas{max-width:100%; border-radius:8px; touch-action:none; box-shadow:0 6px 20px rgba(0,0,0,.4);}
+  .carrom-controls{display:flex; align-items:center; gap:10px; width:100%; max-width:480px; margin-top:10px; justify-content:center;}
+  .carrom-hint{font-size:.78rem; color:var(--text-dim); text-align:center; flex:1;}
+
+  /* ---------- Games hub ---------- */
+  .games-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; width:100%;}
+  .game-card{background:var(--surface2); border-radius:12px; padding:16px 10px; text-align:center; cursor:pointer;}
+  .game-card .gc-icon{font-size:2rem; margin-bottom:6px;}
+  .game-card h3{margin:0 0 4px; font-size:.95rem;}
+  .game-card p{margin:0; font-size:.75rem; color:var(--text-dim);}
+  .game-overlay{position:fixed; inset:0; background:var(--bg); z-index:400; display:none; flex-direction:column; align-items:center; padding:16px; overflow-y:auto;}
+  .game-overlay.show{display:flex;}
+  .game-overlay-header{display:flex; align-items:center; justify-content:space-between; width:100%; max-width:480px; margin-bottom:12px;}
+  .game-overlay-header h2{margin:0; font-size:1.15rem; color:var(--peach);}
+  .emoji-btn{width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--surface2); font-size:1.15rem; display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; line-height:1;}
+  .emoji-picker{position:fixed; z-index:999; background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.5); padding:10px; width:262px; display:none; grid-template-columns:repeat(6,1fr); gap:2px; max-height:260px; overflow-y:auto;}
+  .emoji-picker.show{display:grid;}
+  .emoji-picker button{background:none; border:none; font-size:1.35rem; padding:7px 0; border-radius:8px; cursor:pointer; line-height:1;}
+  .emoji-picker button:hover{background:var(--surface2);}
+  .game-reaction-pop{position:absolute; left:50%; top:44%; transform:translate(-50%,-50%) scale(0.3); font-size:5rem; pointer-events:none; animation:gameReactionPop 1.4s ease-out forwards; z-index:50;}
+  @keyframes gameReactionPop{
+    0%{transform:translate(-50%,-50%) scale(0.3); opacity:0;}
+    15%{transform:translate(-50%,-50%) scale(1.2); opacity:1;}
+    30%{transform:translate(-50%,-50%) scale(1); opacity:1;}
+    78%{transform:translate(-50%,-62%) scale(1); opacity:1;}
+    100%{transform:translate(-50%,-95%) scale(0.9); opacity:0;}
+  }
+  .game-close{background:var(--surface2); border:none; color:var(--text); width:34px; height:34px; border-radius:50%; font-size:1.1rem;}
+
+  /* ---------- Shared score row ---------- */
+  .score-row{display:flex; gap:8px; width:100%; max-width:480px; margin-bottom:10px;}
+  .score-box{flex:1; background:var(--surface2); border-radius:8px; padding:8px; text-align:center;}
+  .score-box .label{font-size:.68rem; color:var(--text-dim);}
+  .score-box .val{font-size:1.2rem; font-weight:800; font-family:'Baloo 2',sans-serif;}
+
+  /* ---------- Tic Tac Toe ---------- */
+  .ttt-wrap{width:100%; max-width:380px; text-align:center;}
+  .ttt-status{font-size:1rem; font-weight:700; color:var(--peach); margin-bottom:10px; min-height:24px;}
+  .ttt-board{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;}
+  .ttt-cell{aspect-ratio:1; background:var(--surface2); border-radius:10px; font-size:2rem; font-weight:800; display:flex; align-items:center; justify-content:center; color:var(--peach); cursor:pointer;}
+  .ttt-cell.o{color:var(--teal);}
+
+  /* ---------- Chess ---------- */
+  .chess-wrap{width:100%; max-width:420px; text-align:center;}
+  .chess-status{font-size:.95rem; font-weight:700; color:var(--peach); margin-bottom:10px; min-height:22px;}
+  .chess-board{display:grid; grid-template-columns:repeat(8,1fr); width:100%; aspect-ratio:1; border:3px solid var(--surface2); border-radius:6px; overflow:hidden;}
+  .chess-cell{aspect-ratio:1; display:flex; align-items:center; justify-content:center; font-size:min(6vw,28px); position:relative; cursor:pointer;}
+  .chess-cell.light{background:#EAD9B8;}
+  .chess-cell.dark{background:#8A6642;}
+  .chess-cell.selected{outline:3px solid var(--gold); outline-offset:-3px;}
+  .chess-cell.check{background:#B23B3B !important;}
+  .chess-cell .dot{position:absolute; width:22%; height:22%; border-radius:50%; background:rgba(63,191,160,.75);}
+  .chess-cell .dot.capture{width:80%; height:80%; background:transparent; border:4px solid rgba(178,59,59,.75); border-radius:50%;}
+  .chess-piece.w{color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.6);}
+  .chess-piece.b{color:#1a1a1a; text-shadow:0 1px 1px rgba(255,255,255,.3);}
+  .chess-promo{display:flex; gap:8px; justify-content:center; margin:12px 0;}
+  .chess-promo button{font-size:1.6rem; background:var(--surface2); border:1px solid var(--line); border-radius:8px; padding:6px 12px;}
+
+  /* ---------- Ludo ---------- */
+  .ludo-wrap{width:100%; max-width:440px; text-align:center;}
+  .ludo-player-row{display:flex; align-items:center; justify-content:space-between; background:var(--surface2); border-radius:8px; padding:10px 14px; margin-bottom:8px;}
+  .ludo-player-row .dot{width:14px; height:14px; border-radius:50%; display:inline-block; margin-right:8px;}
+  .ludo-player-row select{background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:5px 8px; font-size:.82rem;}
+  .ludo-status{font-size:.95rem; font-weight:700; color:var(--peach); margin-bottom:10px;}
+  #ludoCanvas{max-width:100%; border-radius:8px;}
+  .ludo-controls{display:flex; align-items:center; justify-content:center; gap:14px; margin:14px 0;}
+  .dice{width:56px; height:56px; background:var(--surface2); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.8rem; cursor:pointer; border:2px solid var(--line); transform-origin:center; transition:transform .1s;}
+  .dice.rolling{animation:ludoDiceSpin .3s ease-in-out infinite;}
+  @keyframes ludoDiceSpin{
+    0%{transform:rotate(0deg) scale(1);}
+    25%{transform:rotate(-18deg) scale(1.1);}
+    50%{transform:rotate(14deg) scale(1.14);}
+    75%{transform:rotate(-8deg) scale(1.08);}
+    100%{transform:rotate(0deg) scale(1);}
+  }
+  .ludo-hint{font-size:.82rem; color:var(--text-dim);}
+  .ludo-sound-btn{width:38px; height:38px; border-radius:10px; background:var(--surface2); border:1px solid var(--line); cursor:pointer; font-size:1.1rem; display:flex; align-items:center; justify-content:center;}
+
+  /* ---------- Rewards ---------- */
+  .points-card{background:linear-gradient(135deg, var(--peach), var(--gold)); border-radius:14px; padding:20px; text-align:center; color:#2A1D14; margin-bottom:14px;}
+  .points-card .n{font-size:2.2rem; font-weight:800; font-family:'Baloo 2',sans-serif;}
+  .points-card .l{font-size:.8rem; font-weight:600; opacity:.85;}
+  .checkin-btn{width:100%; padding:12px; border-radius:10px; border:none; background:var(--teal); color:#0E2A22; font-weight:700; font-size:.95rem; margin-bottom:16px;}
+  .checkin-btn:disabled{background:var(--surface2); color:var(--text-dim);}
+  .lb-title{font-size:.85rem; font-weight:700; color:var(--text-dim); margin-bottom:8px;}
+  .lb-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line);}
+  .lb-row:last-child{border-bottom:none;}
+  .lb-rank{width:24px; font-weight:800; color:var(--gold); text-align:center;}
+  .lb-name{flex:1; font-weight:600; font-size:.9rem;}
+  .lb-pts{font-weight:700; color:var(--peach); font-size:.9rem;}
+
+  /* ---------- Groups ---------- */
+  .group-card{background:var(--surface2); border-radius:12px; padding:16px; margin-bottom:12px;}
+  .group-card h3{margin:0 0 4px; font-size:1.1rem;}
+  .group-card .code{font-family:monospace; background:var(--bg); padding:4px 10px; border-radius:6px; font-size:.9rem; color:var(--gold); letter-spacing:.1em;}
+  .member-chip{display:inline-block; background:var(--bg); padding:5px 10px; border-radius:14px; font-size:.8rem; margin:3px 4px 3px 0;}
+  label{display:block; font-size:.78rem; color:var(--text-dim); margin:10px 0 4px;}
+  input[type=text]{width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:.9rem;}
+  textarea.field{width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--line); background:var(--bg); color:var(--text); font-size:.9rem; font-family:inherit; resize:vertical; min-height:56px;}
+  .icon-picker, .color-picker{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 2px;}
+  .icon-choice{width:40px; height:40px; border-radius:10px; background:var(--bg); border:2px solid transparent; font-size:1.25rem; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .icon-choice.selected{border-color:var(--peach);}
+  .color-choice{width:28px; height:28px; border-radius:50%; border:2px solid transparent; cursor:pointer;}
+  .color-choice.selected{border-color:#fff; box-shadow:0 0 0 2px var(--peach);}
+  .group-header{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .group-banner{border-radius:12px 12px 0 0; padding:16px; margin:-16px -16px 12px;}
+  .group-banner .group-header{margin-bottom:0;}
+  .group-banner h3{color:#fff !important; text-shadow:0 1px 4px rgba(0,0,0,.35);}
+  .group-banner .group-desc{color:rgba(255,255,255,.9) !important; text-shadow:0 1px 3px rgba(0,0,0,.3);}
+  .group-avatar{width:52px; height:52px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.6rem; flex:none; box-shadow:0 2px 10px rgba(0,0,0,.25);}
+  .group-desc{font-size:.85rem; color:var(--text-dim); margin:2px 0 0;}
+  .theme-picker{display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 2px;}
+  .theme-swatch{width:34px; height:34px; border-radius:10px; border:2px solid transparent; cursor:pointer; flex:none;}
+  .theme-swatch.selected{border-color:#fff; box-shadow:0 0 0 2px var(--peach);}
+  .invite-row{display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;}
+  .icon-btn-sm{padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--surface2); color:var(--text); font-size:.8rem; font-weight:600; cursor:pointer;}
+  .btn-block{width:100%; padding:11px; border-radius:8px; border:none; background:var(--peach); color:#2A1D14; font-weight:700; margin-top:10px;}
+  .btn-outline{width:100%; padding:11px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--text); font-weight:600; margin-top:8px;}
+  .empty{text-align:center; color:var(--text-dim); font-size:.85rem; padding:16px 0;}
+
+  #toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--surface2); color:var(--text); padding:11px 20px; border-radius:8px; font-size:.85rem; font-weight:600; z-index:200; opacity:0; pointer-events:none; transition:opacity .25s, transform .25s; box-shadow:0 4px 14px rgba(0,0,0,.3);}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(-6px);}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <h1>🛋️ Baithak</h1>
+  <p>Chat, earn points, and hang out with your group.</p>
+  <input type="text" id="nameInput" placeholder="Pick a display name" maxlength="20">
+  <button onclick="enterApp()">Join Baithak</button>
+</div>
+
+<div class="app" id="app" style="display:none;">
+  <header>
+    <div class="brand">🛋️ Baithak</div>
+    <div class="me">Signed in as<br><b id="myNameLabel"></b></div>
+  </header>
+  <div class="tabs">
+    <div class="tab active" data-tab="chat" onclick="switchTab('chat')">💬 Chat</div>
+    <div class="tab" data-tab="rewards" onclick="switchTab('rewards')">🏆 Rewards</div>
+    <div class="tab" data-tab="groups" onclick="switchTab('groups')">👨‍👩‍👧 Groups</div>
+    <div class="tab" data-tab="games" onclick="switchTab('games')">🎮 Games</div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="panel active" id="panel-chat">
+    <div class="room-picker" id="roomPicker"></div>
+    <div class="voice-bar">
+      <button class="voice-btn" id="chatVoiceBtn" onclick="toggleVoiceCurrentRoom()">🎙️ Join Voice</button>
+      <div class="voice-participants" id="chatVoiceParticipants"></div>
+    </div>
+    <div class="chat-list-wrap">
+      <div class="msg-list" id="msgList"></div>
+      <button class="scroll-jump" id="msgListJump" onclick="jumpToBottom('msgList','msgListJump')">↓ New messages</button>
+    </div>
+    <div class="typing-indicator" id="typingIndicatorMain"></div>
+    <div class="msg-input-row">
+      <button type="button" class="emoji-btn" id="chatEmojiBtn" onclick="openChatEmoji()">😊</button>
+      <textarea id="msgInput" rows="1" placeholder="Type a message..." maxlength="300"></textarea>
+      <button onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+  <!-- REWARDS -->
+  <div class="panel" id="panel-rewards">
+    <div class="points-card">
+      <div class="n" id="myPoints">0</div>
+      <div class="l">your points</div>
+    </div>
+    <button class="checkin-btn" id="checkinBtn" onclick="dailyCheckin()">🎁 Daily Check-in (+10 points)</button>
+    <div class="lb-title">Leaderboard — Top 10</div>
+    <div id="leaderboard"><div class="empty">Loading...</div></div>
+  </div>
+
+  <!-- GROUPS -->
+  <div class="panel" id="panel-groups">
+    <div id="groupsContent"></div>
+  </div>
+
+  <!-- GAMES HUB -->
+  <div class="panel" id="panel-games">
+    <div class="games-grid">
+      <div class="game-card" onclick="openGame('carrom')"><div class="gc-icon">🎯</div><h3>Carrom</h3><p>Flick, pot, and cover the queen</p></div>
+      <div class="game-card" onclick="openGame('ttt')"><div class="gc-icon">⭕</div><h3>Tic Tac Toe</h3><p>Beat your friend or the computer</p></div>
+      <div class="game-card" onclick="openGame('chess')"><div class="gc-icon">♟️</div><h3>Chess</h3><p>Full rules — 2 player pass & play</p></div>
+      <div class="game-card" onclick="openGame('ludo')"><div class="gc-icon">🎲</div><h3>Ludo</h3><p>2–4 players, roll and race home</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- CARROM OVERLAY -->
+<div class="game-overlay" id="overlay-carrom">
+  <div class="game-overlay-header">
+    <h2>🎯 Carrom</h2>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="emoji-btn" id="carromEmojiBtn" onclick="openGameEmoji('carrom')">😀</button>
+      <button class="game-close" onclick="closeGame('carrom')">✕</button>
+    </div>
+  </div>
+  <div class="carrom-toolbar">
+    <div class="carrom-modes">
+      <button class="mode-btn active" id="modeBtn2p" onclick="setCarromMode('2p')">2 Player</button>
+      <button class="mode-btn" id="modeBtnAi" onclick="setCarromMode('ai')">vs Computer</button>
+    </div>
+    <button class="btn-outline" style="width:auto; padding:8px 14px; margin:0;" onclick="newCarromGame()">🔄 New Game</button>
+  </div>
+  <div class="carrom-scoreboard">
+    <div class="carrom-score-box white-box" id="carromWhiteScore"><div class="lbl">White</div><div class="val">0</div></div>
+    <div class="carrom-turn" id="carromTurnLabel">Your turn</div>
+    <div class="carrom-score-box black-box" id="carromBlackScore"><div class="lbl">Black</div><div class="val">0</div></div>
+  </div>
+  <canvas id="carromCanvas" width="480" height="480"></canvas>
+  <div class="carrom-controls">
+    <div class="carrom-hint" id="carromHint">Slide along your line to aim, pull back and release to shoot</div>
+  </div>
+</div>
+
+<!-- TIC TAC TOE OVERLAY -->
+<div class="game-overlay" id="overlay-ttt">
+  <div class="game-overlay-header">
+    <h2>⭕ Tic Tac Toe</h2>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="emoji-btn" id="tttEmojiBtn" onclick="openGameEmoji('ttt')">😀</button>
+      <button class="game-close" onclick="closeGame('ttt')">✕</button>
+    </div>
+  </div>
+  <div class="ttt-wrap">
+    <div class="carrom-modes" style="margin-bottom:10px;">
+      <button class="mode-btn active" id="tttMode2p" onclick="setTttMode('2p')">2 Player</button>
+      <button class="mode-btn" id="tttModeAi" onclick="setTttMode('ai')">vs Computer</button>
+    </div>
+    <div class="score-row">
+      <div class="score-box"><div class="label">X wins</div><div class="val" id="tttWins">0</div></div>
+      <div class="score-box"><div class="label">Draws</div><div class="val" id="tttDraws">0</div></div>
+      <div class="score-box"><div class="label">O wins</div><div class="val" id="tttLosses">0</div></div>
+    </div>
+    <div class="ttt-status" id="tttStatus">X's turn</div>
+    <div class="ttt-board" id="tttBoard"></div>
+    <button class="btn-block" onclick="tttNewGame()">🔄 New Game</button>
+  </div>
+</div>
+
+<!-- CHESS OVERLAY -->
+<div class="game-overlay" id="overlay-chess">
+  <div class="game-overlay-header">
+    <h2>♟️ Chess</h2>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="emoji-btn" id="chessEmojiBtn" onclick="openGameEmoji('chess')">😀</button>
+      <button class="game-close" onclick="closeGame('chess')">✕</button>
+    </div>
+  </div>
+  <div class="chess-wrap">
+    <div class="carrom-modes" style="margin-bottom:10px;">
+      <button class="mode-btn active" id="chessMode2p" onclick="setChessMode('2p')">2 Player</button>
+      <button class="mode-btn" id="chessModeAi" onclick="setChessMode('ai')">vs Computer</button>
+    </div>
+    <div class="chess-status" id="chessStatus">White to move</div>
+    <div class="chess-board" id="chessBoard"></div>
+    <div class="chess-promo" id="chessPromo" style="display:none;"></div>
+    <button class="btn-block" onclick="chessNewGame()">🔄 New Game</button>
+  </div>
+</div>
+
+<!-- LUDO OVERLAY -->
+<div class="game-overlay" id="overlay-ludo">
+  <div class="game-overlay-header">
+    <h2>🎲 Ludo</h2>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <button type="button" class="emoji-btn" id="ludoEmojiBtn" onclick="openGameEmoji('ludo')">😀</button>
+      <button class="game-close" onclick="closeGame('ludo')">✕</button>
+    </div>
+  </div>
+  <div class="ludo-wrap" id="ludoSetup">
+    <h3 style="text-align:center;">Players</h3>
+    <div id="ludoPlayerConfig"></div>
+    <button class="btn-block" onclick="startLudo()">Start Game</button>
+  </div>
+  <div class="ludo-wrap" id="ludoGame" style="display:none;">
+    <div class="ludo-status" id="ludoStatus">Red's turn</div>
+    <canvas id="ludoCanvas" width="414" height="414"></canvas>
+    <div class="ludo-controls">
+      <div class="dice" id="ludoDice" onclick="rollLudoDice()">🎲</div>
+      <div class="ludo-hint" id="ludoHint">Tap dice to roll</div>
+      <button class="ludo-sound-btn" id="ludoSoundBtn" onclick="toggleLudoSound()" title="Toggle sound">🔊</button>
+    </div>
+    <button class="btn-outline" onclick="resetLudoSetup()">↺ New Game</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, doc, setDoc, updateDoc, getDoc, deleteDoc, onSnapshot,
+  query, orderBy, where, limit, serverTimestamp, increment, arrayUnion, arrayRemove
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyC3AdPwJdntaF3reap4VT03FveakG5Nt2E",
+  authDomain: "meri-dhun-aa79a.firebaseapp.com",
+  projectId: "meri-dhun-aa79a",
+  storageBucket: "meri-dhun-aa79a.firebasestorage.app",
+  messagingSenderId: "1042835727543",
+  appId: "1:1042835727543:web:81014e9e02b36c34a35932",
+  measurementId: "G-Z96959QWQD"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const usersCol = collection(db, "social_users");
+const messagesCol = collection(db, "social_messages");
+const groupsCol = collection(db, "social_groups");
+const typingCol = collection(db, "social_typing");
+
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2200);
+}
+function todayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/* ---------------- Chat helpers ---------------- */
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+const AVATAR_COLORS = ['#F2A365','#3FBFA0','#5B8DD6','#E8C15C','#D6544A','#9B7EDE','#4FB3BF','#E0779A'];
+function avatarColor(name){
+  let h = 0;
+  for(let i=0;i<name.length;i++) h = (h*31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+function initials(name){
+  const parts = name.trim().split(/\s+/);
+  const s = ((parts[0]?.[0]||'') + (parts[1]?.[0]||'')).toUpperCase();
+  return s || '?';
+}
+function formatTime(d){
+  let h = d.getHours(), m = d.getMinutes();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if(h === 0) h = 12;
+  return `${h}:${String(m).padStart(2,'0')} ${ampm}`;
+}
+function formatDaySeparator(d){
+  const now = new Date();
+  const startOf = x => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diffDays = Math.round((startOf(now) - startOf(d)) / 86400000);
+  if(diffDays === 0) return 'Today';
+  if(diffDays === 1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' });
+}
+function autoGrow(el){
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+}
+window.jumpToBottom = function(listElId, jumpElId){
+  const el = document.getElementById(listElId);
+  if(el) el.scrollTop = el.scrollHeight;
+  const jumpEl = document.getElementById(jumpElId);
+  if(jumpEl) jumpEl.classList.remove('show');
+};
+window.deleteChatMessage = async function(id){
+  try{ await deleteDoc(doc(db, 'social_messages', id)); }
+  catch(e){ toast('Error: ' + e.message); }
+};
+
+const knownMsgIds = {};   // roomKey -> Set of message ids already rendered
+const typingState = {};   // roomKey -> { username: lastSeenMillis }
+const typingThrottle = {}; // roomKey -> millis of last typing ping we sent
+function notifyTyping(roomKey){
+  if(!roomKey) return;
+  const now = Date.now();
+  if(typingThrottle[roomKey] && now - typingThrottle[roomKey] < 1200) return;
+  typingThrottle[roomKey] = now;
+  setDoc(doc(typingCol, roomKey + '__' + myName), { room: roomKey, username: myName, updatedAt: serverTimestamp() }).catch(()=>{});
+}
+let typingUnsubMain = null, typingUnsubGroup = null;
+function subscribeTyping(roomKey, which){
+  const q = query(typingCol, where('room','==', roomKey));
+  const handler = (snap)=>{
+    const map = {};
+    snap.docs.forEach(d=>{
+      const data = d.data();
+      if(data.username === myName) return;
+      const t = data.updatedAt && data.updatedAt.toDate ? data.updatedAt.toDate().getTime() : Date.now();
+      map[data.username] = t;
+    });
+    typingState[roomKey] = map;
+  };
+  if(which === 'group'){
+    if(typingUnsubGroup) typingUnsubGroup();
+    typingUnsubGroup = onSnapshot(q, handler);
+  } else {
+    if(typingUnsubMain) typingUnsubMain();
+    typingUnsubMain = onSnapshot(q, handler);
+  }
+}
+function updateTypingIndicatorDOM(roomKey, elId){
+  const el = document.getElementById(elId);
+  if(!el || !roomKey) return;
+  const now = Date.now();
+  const map = typingState[roomKey] || {};
+  const names = Object.keys(map).filter(u => (now - map[u]) < 4000);
+  if(!names.length){ el.textContent = ''; el.classList.remove('show'); return; }
+  let text;
+  if(names.length === 1) text = `${names[0]} is typing…`;
+  else if(names.length === 2) text = `${names[0]} and ${names[1]} are typing…`;
+  else text = `${names.length} people are typing…`;
+  el.textContent = text;
+  el.classList.add('show');
+}
+setInterval(()=>{
+  updateTypingIndicatorDOM(currentRoom, 'typingIndicatorMain');
+  if(myGroupId) updateTypingIndicatorDOM('group_'+myGroupId, 'typingIndicatorGroup');
+}, 700);
+
+// Shared renderer used by both the main room chat and the group chat.
+const roomHasRendered = {}; // roomKey -> true once we've painted this room at least once
+function renderChatMessages(roomKey, listElId, jumpElId, docs){
+  const el = document.getElementById(listElId);
+  if(!el) return;
+  if(!knownMsgIds[roomKey]) knownMsgIds[roomKey] = new Set();
+  const known = knownMsgIds[roomKey];
+  const isFirstRender = !roomHasRendered[roomKey];
+  const wasNearBottom = isFirstRender ? true : (el.scrollHeight - el.scrollTop - el.clientHeight) < 80;
+  const newIncomingIds = new Set(docs.filter(m => !known.has(m.id)).map(m=>m.id));
+
+  if(!docs.length){
+    el.innerHTML = `<div class="chat-empty"><div class="chat-empty-icon">💬</div><div class="chat-empty-title">No messages yet</div><div class="chat-empty-sub">Say hi and start the conversation 👋</div></div>`;
+    known.clear();
+    roomHasRendered[roomKey] = true;
+    return;
+  }
+
+  let html = '';
+  let lastDay = null, lastUser = null, lastTime = 0;
+  docs.forEach(m=>{
+    const d = m.createdAt && m.createdAt.toDate ? m.createdAt.toDate() : null;
+    const dayLabel = d ? formatDaySeparator(d) : null;
+    if(dayLabel && dayLabel !== lastDay){
+      html += `<div class="chat-day-sep"><span>${dayLabel}</span></div>`;
+      lastDay = dayLabel; lastUser = null;
+    }
+    const isMe = m.username === myName;
+    const sameAsPrev = lastUser === m.username && d && (d.getTime() - lastTime) < 5*60*1000;
+    const showHeader = !sameAsPrev;
+    const isNew = !isFirstRender && newIncomingIds.has(m.id);
+    const timeStr = d ? formatTime(d) : '';
+    const safeUser = escapeHtml(m.username||'');
+    html += `
+      <div class="msg-row ${isMe?'me':'other'} ${showHeader?'':'grouped'} ${isNew?'msg-new':''}">
+        ${!isMe ? (showHeader ? `<div class="msg-avatar" style="background:${avatarColor(m.username||'?')}">${initials(m.username||'?')}</div>` : `<div class="msg-avatar-spacer"></div>`) : ''}
+        <div class="msg-bubble-wrap">
+          ${!isMe && showHeader ? `<div class="msg-who">${safeUser}</div>` : ''}
+          <div class="msg-bubble">${escapeHtml(m.text||'')}${isMe ? `<span class="msg-del" onclick="deleteChatMessage('${m.id}')" title="Delete">✕</span>` : ''}</div>
+          ${timeStr ? `<div class="msg-time">${timeStr}</div>` : ''}
+        </div>
+      </div>
+    `;
+    lastUser = m.username;
+    if(d) lastTime = d.getTime();
+  });
+  el.innerHTML = html;
+  docs.forEach(m=>known.add(m.id));
+  roomHasRendered[roomKey] = true;
+
+  const jumpEl = jumpElId ? document.getElementById(jumpElId) : null;
+  if(isFirstRender || wasNearBottom){
+    el.scrollTop = el.scrollHeight;
+    if(jumpEl) jumpEl.classList.remove('show');
+  } else if(newIncomingIds.size && jumpEl){
+    jumpEl.classList.add('show');
+  }
+}
+
+let myName = localStorage.getItem('baithak_name') || '';
+let myGroupId = null;
+let currentRoom = 'general';
+const rooms = [
+  {id:'general', label:'💬 General'},
+  {id:'games', label:'🎮 Games Talk'},
+  {id:'friends', label:'🤝 Make Friends'}
+];
+
+window.enterApp = async function(){
+  const val = document.getElementById('nameInput').value.trim();
+  if(!val) return toast('Please enter a name');
+  myName = val;
+  localStorage.setItem('baithak_name', myName);
+  try{
+    const ref = doc(usersCol, myName);
+    const snap = await getDoc(ref);
+    if(!snap.exists()){
+      await setDoc(ref, { username: myName, points: 0, lastCheckin: '', groupId: null, createdAt: serverTimestamp() });
+    }
+  }catch(e){ toast('Error: ' + e.message); }
+  boot();
+};
+
+function boot(){
+  document.getElementById('gate').classList.add('hide');
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('myNameLabel').textContent = myName;
+
+  renderRoomPicker();
+  listenToRoom(currentRoom);
+  subscribeRoomPeeks();
+  listenToMe();
+  listenToLeaderboard();
+  renderGroupsTab(); // show the Create/Join cards immediately, don't wait on the user-doc listener
+}
+
+if(myName){
+  document.getElementById('nameInput').value = myName;
+}
+
+window.switchTab = function(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active', p.id === 'panel-'+name));
+  if(name === 'groups') renderGroupsTab(); // re-render every time the tab is opened, so it's never stuck blank
+};
+
+/* ---------------- Chat ---------------- */
+const unreadRooms = {};
+const roomLatestId = {};
+function renderRoomPicker(){
+  const el = document.getElementById('roomPicker');
+  el.innerHTML = rooms.map(r=>`<div class="room-chip ${r.id===currentRoom?'active':''}" onclick="switchRoom('${r.id}')">${r.label}${unreadRooms[r.id] ? '<span class="chip-dot"></span>' : ''}</div>`).join('');
+}
+function subscribeRoomPeeks(){
+  rooms.forEach(r=>{
+    const q = query(messagesCol, where('room','==', r.id), orderBy('createdAt','desc'), limit(1));
+    onSnapshot(q, (snap)=>{
+      if(snap.empty) return;
+      const d = snap.docs[0];
+      roomLatestId[r.id] = d.id;
+      const data = d.data();
+      const seen = localStorage.getItem('baithak_lastseen_'+r.id);
+      unreadRooms[r.id] = (d.id !== seen) && data.username !== myName && r.id !== currentRoom;
+      renderRoomPicker();
+    });
+  });
+}
+window.switchRoom = async function(id){
+  if(voiceChannel && voiceChannel !== id && voiceChannel === currentRoom){
+    await leaveVoice();
+    toast('Left voice (switched room)');
+  }
+  currentRoom = id;
+  unreadRooms[id] = false;
+  if(roomLatestId[id]) localStorage.setItem('baithak_lastseen_'+id, roomLatestId[id]);
+  renderRoomPicker();
+  listenToRoom(id);
+  updateVoiceUI();
+};
+let roomUnsub = null;
+function listenToRoom(roomId){
+  if(roomUnsub) roomUnsub();
+  const q = query(messagesCol, where('room','==', roomId), orderBy('createdAt','asc'), limit(100));
+  roomUnsub = onSnapshot(q, (snap)=>{
+    const msgs = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+    renderChatMessages(roomId, 'msgList', 'msgListJump', msgs);
+  });
+  subscribeTyping(roomId, 'main');
+}
+let msgsSentToday = parseInt(localStorage.getItem('baithak_msgcount_'+todayKey()) || '0');
+window.sendMessage = async function(){
+  const input = document.getElementById('msgInput');
+  const text = input.value.trim();
+  if(!text) return;
+  try{
+    await addDoc(messagesCol, { room: currentRoom, username: myName, text, createdAt: serverTimestamp() });
+    input.value = '';
+    autoGrow(input);
+    if(msgsSentToday < 20){
+      msgsSentToday++;
+      localStorage.setItem('baithak_msgcount_'+todayKey(), msgsSentToday);
+      await updateDoc(doc(usersCol, myName), { points: increment(1) });
+    }
+  }catch(e){ toast('Error: ' + e.message); }
+};
+const msgInputEl = document.getElementById('msgInput');
+msgInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); window.sendMessage(); } });
+msgInputEl.addEventListener('input', ()=>{ autoGrow(msgInputEl); notifyTyping(currentRoom); });
+
+/* ---------------- Rewards ---------------- */
+function listenToMe(){
+  onSnapshot(doc(usersCol, myName), (snap)=>{
+    if(!snap.exists()) return;
+    const data = snap.data();
+    document.getElementById('myPoints').textContent = data.points || 0;
+    myGroupId = data.groupId || null;
+    const btn = document.getElementById('checkinBtn');
+    if(data.lastCheckin === todayKey()){
+      btn.disabled = true;
+      btn.textContent = '✅ Checked in today';
+    } else {
+      btn.disabled = false;
+      btn.textContent = '🎁 Daily Check-in (+10 points)';
+    }
+    renderGroupsTab();
+  }, (err)=>{ toast('Could not load your profile: ' + err.message); });
+}
+window.dailyCheckin = async function(){
+  try{
+    await updateDoc(doc(usersCol, myName), { points: increment(10), lastCheckin: todayKey() });
+    toast('+10 points! Come back tomorrow 🎉');
+  }catch(e){ toast('Error: ' + e.message); }
+};
+function listenToLeaderboard(){
+  const q = query(usersCol, orderBy('points','desc'), limit(10));
+  onSnapshot(q, (snap)=>{
+    const users = snap.docs.map(d=>d.data());
+    const el = document.getElementById('leaderboard');
+    el.innerHTML = users.length ? users.map((u,i)=>`
+      <div class="lb-row">
+        <div class="lb-rank">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</div>
+        <div class="lb-name">${u.username}${u.username===myName?' (you)':''}</div>
+        <div class="lb-pts">${u.points||0}</div>
+      </div>
+    `).join('') : '<div class="empty">No one yet — be the first!</div>';
+  });
+}
+
+/* ---------------- Groups ---------------- */
+const GROUP_ICONS = ['🏠','🎮','🎲','♟️','🎉','🏆','⭐','🔥','💬','👨‍👩‍👧‍👦','☕','🎬'];
+const GROUP_COLORS = ['#E8955C','#4CAF7D','#5B8DEF','#C0392B','#9B59B6','#D4A72C'];
+const ROOM_THEMES = [
+  { id:'classic',  name:'Classic',  css:null },
+  { id:'sunset',   name:'Sunset',   css:'linear-gradient(135deg,#F2994A,#F2C94C)' },
+  { id:'ocean',    name:'Ocean',    css:'linear-gradient(135deg,#2193b0,#6dd5ed)' },
+  { id:'forest',   name:'Forest',   css:'linear-gradient(135deg,#134E5E,#71B280)' },
+  { id:'grape',    name:'Grape',    css:'linear-gradient(135deg,#8E2DE2,#4A00E0)' },
+  { id:'rose',     name:'Rose',     css:'linear-gradient(135deg,#EB3349,#F45C43)' },
+  { id:'midnight', name:'Midnight', css:'linear-gradient(135deg,#0F2027,#2C5364)' },
+  { id:'mint',     name:'Mint',     css:'linear-gradient(135deg,#00b09b,#96c93d)' }
+];
+function themeCss(id){ const t = ROOM_THEMES.find(x=>x.id===id); return (t && t.css) ? t.css : null; }
+function renderThemeSwatches(selectedId){
+  return ROOM_THEMES.map(t=>`<div class="theme-swatch ${t.id===selectedId?'selected':''}" data-theme="${t.id}" style="background:${t.css || 'var(--surface2)'}" title="${t.name}"></div>`).join('');
+}
+let newGroupIcon = GROUP_ICONS[0];
+let newGroupColor = GROUP_COLORS[0];
+let newGroupTheme = ROOM_THEMES[0].id;
+let currentGroupData = null;
+let myGroupUnsub = null;
+window.pickGroupIcon = function(icon){
+  newGroupIcon = icon;
+  document.querySelectorAll('#newGroupIconPicker .icon-choice').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.icon === icon);
+  });
+};
+window.pickGroupColor = function(color){
+  newGroupColor = color;
+  document.querySelectorAll('#newGroupColorPicker .color-choice').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.color === color);
+  });
+};
+window.pickGroupTheme = function(id){
+  newGroupTheme = id;
+  document.querySelectorAll('#newGroupThemePicker .theme-swatch').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.theme === id);
+  });
+};
+window.toggleThemePicker = function(){
+  const el = document.getElementById('themePickerInline');
+  if(el) el.style.display = (el.style.display === 'flex') ? 'none' : 'flex';
+};
+window.setGroupTheme = async function(themeId){
+  if(!myGroupId || !currentGroupData) return;
+  if(currentGroupData.ownerUsername !== myName) return toast('Only the group owner can change the theme');
+  try{
+    await updateDoc(doc(groupsCol, myGroupId), { theme: themeId });
+    toast('Theme updated! 🎨');
+  }catch(e){ toast('Error: ' + e.message); }
+};
+function renderGroupsTab(){
+  const el = document.getElementById('groupsContent');
+  if(!el) return;
+  if(myGroupUnsub){ myGroupUnsub(); myGroupUnsub = null; }
+  if(!myGroupId){
+    el.innerHTML = `
+      <div class="group-card">
+        <h3>Create a Group</h3>
+        <label>Group name</label>
+        <input type="text" id="newGroupName" maxlength="40" placeholder="e.g. The Khan Family">
+        <label>Description (optional)</label>
+        <textarea class="field" id="newGroupDesc" maxlength="120" placeholder="What's this group about?"></textarea>
+        <label>Group icon</label>
+        <div class="icon-picker" id="newGroupIconPicker">${GROUP_ICONS.map(i=>`<div class="icon-choice ${i===newGroupIcon?'selected':''}" data-icon="${i}" onclick="pickGroupIcon('${i}')">${i}</div>`).join('')}</div>
+        <label>Colour</label>
+        <div class="color-picker" id="newGroupColorPicker">${GROUP_COLORS.map(c=>`<div class="color-choice ${c===newGroupColor?'selected':''}" data-color="${c}" style="background:${c}" onclick="pickGroupColor('${c}')"></div>`).join('')}</div>
+        <label>Room theme</label>
+        <div class="theme-picker" id="newGroupThemePicker" onclick="event.target.dataset.theme && pickGroupTheme(event.target.dataset.theme)">${renderThemeSwatches(newGroupTheme)}</div>
+        <button class="btn-block" onclick="createGroup()">Create Group</button>
+      </div>
+      <div class="group-card">
+        <h3>Join a Group</h3>
+        <label>Invite code</label>
+        <input type="text" id="joinCode" placeholder="e.g. AB12CD" style="text-transform:uppercase;">
+        <button class="btn-outline" onclick="joinGroup()">Join Group</button>
+      </div>
+    `;
+    return;
+  }
+  el.innerHTML = `<div class="empty">Loading your group…</div>`;
+  myGroupUnsub = onSnapshot(doc(groupsCol, myGroupId), (snap)=>{
+    if(!snap.exists()){ myGroupId = null; currentGroupData = null; renderGroupsTab(); return; }
+    const g = snap.data();
+    currentGroupData = g;
+    const icon = g.icon || '👥';
+    const color = g.color || '#8B5A2B';
+    const bannerCss = themeCss(g.theme);
+    const isOwner = g.ownerUsername === myName;
+    el.innerHTML = `
+      <div class="group-card">
+        <div class="${bannerCss ? 'group-banner' : ''}" style="${bannerCss ? 'background:'+bannerCss+';' : ''}">
+          <div class="group-header">
+            <div class="group-avatar" style="background:${color}">${icon}</div>
+            <div style="flex:1; min-width:0;">
+              <h3 style="margin:0;">${escapeHtml(g.name)}</h3>
+              ${g.description ? `<div class="group-desc">${escapeHtml(g.description)}</div>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="invite-row">
+          <span style="font-size:.8rem; color:var(--text-dim);">Invite code:</span>
+          <span class="code">${myGroupId}</span>
+          <button type="button" class="icon-btn-sm" onclick="copyInviteCode()">📋 Copy</button>
+          <button type="button" class="icon-btn-sm" onclick="shareInviteCode()">🔗 Share</button>
+          ${isOwner ? `<button type="button" class="icon-btn-sm" onclick="toggleThemePicker()">🎨 Theme</button>` : ''}
+        </div>
+        ${isOwner ? `<div class="theme-picker" id="themePickerInline" style="display:none;" onclick="event.target.dataset.theme && setGroupTheme(event.target.dataset.theme)">${renderThemeSwatches(g.theme || 'classic')}</div>` : ''}
+        <div>${(g.members||[]).map(m=>`<span class="member-chip">${escapeHtml(m)}${m===g.ownerUsername?' 👑':''}</span>`).join('')}</div>
+        <button class="btn-outline" onclick="leaveGroup()">Leave Group</button>
+      </div>
+      <div class="group-card" style="padding:10px;">
+        <div class="voice-bar">
+          <button class="voice-btn" id="groupVoiceBtn" onclick="toggleVoiceGroup()">🎙️ Join Voice</button>
+          <div class="voice-participants" id="groupVoiceParticipants"></div>
+        </div>
+        <div class="chat-list-wrap">
+          <div class="msg-list" id="groupMsgList" style="min-height:220px; padding:8px;"></div>
+          <button class="scroll-jump" id="groupMsgListJump" onclick="jumpToBottom('groupMsgList','groupMsgListJump')">↓ New messages</button>
+        </div>
+        <div class="typing-indicator" id="typingIndicatorGroup"></div>
+        <div class="msg-input-row">
+          <button type="button" class="emoji-btn" id="groupEmojiBtn" onclick="openGroupEmoji()">😊</button>
+          <textarea id="groupMsgInput" rows="1" placeholder="Message your group..." maxlength="300"></textarea>
+          <button onclick="sendGroupMessage()">Send</button>
+        </div>
+      </div>
+    `;
+    listenToGroupChat(myGroupId);
+    const groupInputEl = document.getElementById('groupMsgInput');
+    groupInputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); window.sendGroupMessage(); } });
+    groupInputEl.addEventListener('input', ()=>{ autoGrow(groupInputEl); notifyTyping('group_'+myGroupId); });
+    updateVoiceUI();
+  }, (err)=>{ el.innerHTML = `<div class="empty">Could not load your group.<br>${escapeHtml(err.message)}</div>`; });
+}
+function genCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for(let i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+window.createGroup = async function(){
+  const name = document.getElementById('newGroupName').value.trim();
+  if(!name) return toast('Enter a group name');
+  const description = document.getElementById('newGroupDesc').value.trim();
+  const code = genCode();
+  try{
+    await setDoc(doc(groupsCol, code), {
+      name, description, icon: newGroupIcon, color: newGroupColor, theme: newGroupTheme,
+      ownerUsername: myName, members: [myName], createdAt: serverTimestamp()
+    });
+    await updateDoc(doc(usersCol, myName), { groupId: code });
+    newGroupIcon = GROUP_ICONS[0]; newGroupColor = GROUP_COLORS[0]; newGroupTheme = ROOM_THEMES[0].id;
+    toast('Group created! Code: ' + code);
+  }catch(e){ toast('Error: ' + e.message); }
+};
+window.joinGroup = async function(){
+  const code = document.getElementById('joinCode').value.trim().toUpperCase();
+  if(!code) return toast('Enter an invite code');
+  try{
+    const ref = doc(groupsCol, code);
+    const snap = await getDoc(ref);
+    if(!snap.exists()) return toast('No group found with that code');
+    await updateDoc(ref, { members: arrayUnion(myName) });
+    await updateDoc(doc(usersCol, myName), { groupId: code });
+    toast('Joined ' + snap.data().name);
+  }catch(e){ toast('Error: ' + e.message); }
+};
+window.leaveGroup = async function(){
+  if(!myGroupId) return;
+  try{
+    await updateDoc(doc(groupsCol, myGroupId), { members: arrayRemove(myName) });
+    await updateDoc(doc(usersCol, myName), { groupId: null });
+    toast('Left the group');
+  }catch(e){ toast('Error: ' + e.message); }
+};
+window.copyInviteCode = function(){
+  if(!myGroupId) return;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(myGroupId).then(()=>toast('Invite code copied!')).catch(()=>toast('Code: ' + myGroupId));
+  } else {
+    toast('Code: ' + myGroupId);
+  }
+};
+window.shareInviteCode = function(){
+  if(!myGroupId) return;
+  const groupName = currentGroupData ? currentGroupData.name : 'my group';
+  const text = `Join "${groupName}" on Baithak! Use invite code: ${myGroupId}`;
+  if(navigator.share){
+    navigator.share({ title:'Join my Baithak group', text }).catch(()=>{});
+  } else if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>toast('Invite message copied!')).catch(()=>toast('Code: ' + myGroupId));
+  } else {
+    toast('Code: ' + myGroupId);
+  }
+};
+let groupChatUnsub = null;
+function listenToGroupChat(groupId){
+  if(groupChatUnsub) groupChatUnsub();
+  const roomId = 'group_' + groupId;
+  const q = query(messagesCol, where('room','==', roomId), orderBy('createdAt','asc'), limit(100));
+  groupChatUnsub = onSnapshot(q, (snap)=>{
+    const msgs = snap.docs.map(d=>({ id: d.id, ...d.data() }));
+    renderChatMessages(roomId, 'groupMsgList', 'groupMsgListJump', msgs);
+  });
+  subscribeTyping(roomId, 'group');
+}
+window.sendGroupMessage = async function(){
+  const input = document.getElementById('groupMsgInput');
+  const text = input.value.trim();
+  if(!text || !myGroupId) return;
+  try{
+    await addDoc(messagesCol, { room: 'group_'+myGroupId, username: myName, text, createdAt: serverTimestamp() });
+    input.value = '';
+    autoGrow(input);
+  }catch(e){ toast('Error: ' + e.message); }
+};
+/* ---------------- Voice (Agora) ---------------- */
+const AGORA_APP_ID = "f2c744c14c7e4a74a794ef030279865a";
+let voiceClient = null;
+let localAudioTrack = null;
+let voiceChannel = null;
+let voiceParticipants = {};
+
+function ensureVoiceClient(){
+  if(!voiceClient){
+    voiceClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+    voiceClient.on("user-published", async (user, mediaType)=>{
+      await voiceClient.subscribe(user, mediaType);
+      if(mediaType === "audio") user.audioTrack.play();
+      voiceParticipants[user.uid] = true;
+      renderVoiceParticipants();
+    });
+    voiceClient.on("user-unpublished", (user)=>{
+      delete voiceParticipants[user.uid];
+      renderVoiceParticipants();
+    });
+    voiceClient.on("user-left", (user)=>{
+      delete voiceParticipants[user.uid];
+      renderVoiceParticipants();
+    });
+  }
+  return voiceClient;
+}
+async function toggleVoiceInternal(channelId){
+  if(typeof AgoraRTC === 'undefined') return toast('Voice SDK failed to load — check your connection');
+  const client = ensureVoiceClient();
+  if(voiceChannel === channelId){
+    await leaveVoice();
+    toast('Left voice');
+    return;
+  }
+  if(voiceChannel){
+    await leaveVoice();
+  }
+  try{
+    await client.join(AGORA_APP_ID, channelId, null, myName);
+    localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+    await client.publish([localAudioTrack]);
+    voiceChannel = channelId;
+    voiceParticipants[myName] = true;
+    updateVoiceUI();
+    toast('🎙️ Joined voice');
+  }catch(e){
+    toast('Mic error: ' + e.message);
+  }
+}
+async function leaveVoice(){
+  if(localAudioTrack){
+    localAudioTrack.close();
+    localAudioTrack = null;
+  }
+  if(voiceClient){
+    try{ await voiceClient.leave(); }catch(e){}
+  }
+  voiceChannel = null;
+  voiceParticipants = {};
+  updateVoiceUI();
+}
+function updateVoiceUI(){
+  const chatBtn = document.getElementById('chatVoiceBtn');
+  if(chatBtn){
+    const active = voiceChannel === currentRoom;
+    chatBtn.textContent = active ? '🔴 Leave Voice' : '🎙️ Join Voice';
+    chatBtn.classList.toggle('active', active);
+  }
+  const groupBtn = document.getElementById('groupVoiceBtn');
+  if(groupBtn && myGroupId){
+    const active = voiceChannel === 'group_'+myGroupId;
+    groupBtn.textContent = active ? '🔴 Leave Voice' : '🎙️ Join Voice';
+    groupBtn.classList.toggle('active', active);
+  }
+  renderVoiceParticipants();
+}
+function renderVoiceParticipants(){
+  const names = Object.keys(voiceParticipants);
+  const label = names.length ? '🎙️ In call: ' + names.join(', ') : '';
+  const chatEl = document.getElementById('chatVoiceParticipants');
+  if(chatEl) chatEl.textContent = voiceChannel === currentRoom ? label : '';
+  const groupEl = document.getElementById('groupVoiceParticipants');
+  if(groupEl && myGroupId) groupEl.textContent = voiceChannel === 'group_'+myGroupId ? label : '';
+}
+window.toggleVoiceCurrentRoom = function(){ toggleVoiceInternal(currentRoom); };
+window.toggleVoiceGroup = function(){ if(myGroupId) toggleVoiceInternal('group_'+myGroupId); };
+
+/* ================== CARROM ================== */
+const CB = 480;          // board size (canvas px)
+const CBORDER = 34;      // wooden frame inset
+const POCKET_R = 22;
+const COIN_R = 12;
+const STRIKER_R = 15;
+const FRICTION = 0.985;
+const MIN_SPEED = 0.04;
+const MAX_DRAG = 110;
+const POWER_SCALE = 0.17;
+const RESTITUTION = 0.82;
+const PLAY_L = CBORDER, PLAY_R = CB-CBORDER, PLAY_T = CBORDER, PLAY_B = CB-CBORDER;
+const POCKETS = [
+  {x:PLAY_L, y:PLAY_T}, {x:PLAY_R, y:PLAY_T},
+  {x:PLAY_L, y:PLAY_B}, {x:PLAY_R, y:PLAY_B}
+];
+
+let carromMode = '2p';           // '2p' or 'ai'
+let carromTurn = 1;              // 1 = bottom player (white), 2 = top player/CPU (black)
+let carromCoins = [];            // {x,y,vx,vy,r,color,potted}
+let carromStriker = null;
+let carromMoving = false;
+let carromScores = { white:0, black:0 };
+let carromQueenClaimedBy = null; // 'white' | 'black' | null (still on board or unclaimed)
+let carromQueenPottedPendingCover = null; // color that potted queen this sequence, awaiting cover
+let carromPotsThisTurn = [];
+let carromStrikerBaseX = CB/2;
+let carromDragging = false;
+let carromDragStart = null;
+let carromAnimHandle = null;
+let carromAiThinking = false;
+
+const carromCanvas = document.getElementById('carromCanvas');
+const carromCtx = carromCanvas.getContext('2d');
+
+function carromColorForTurn(turn){ return turn===1 ? 'white' : 'black'; }
+
+window.setCarromMode = function(mode){
+  carromMode = mode;
+  document.getElementById('modeBtn2p').classList.toggle('active', mode==='2p');
+  document.getElementById('modeBtnAi').classList.toggle('active', mode==='ai');
+  newCarromGame();
+};
+
+window.newCarromGame = function(){
+  const cx = CB/2, cy = CB/2;
+  carromCoins = [];
+  carromCoins.push({x:cx, y:cy, vx:0, vy:0, r:COIN_R, color:'red', potted:false});
+  const ring1r = COIN_R*2.05;
+  for(let i=0;i<6;i++){
+    const a = i*(Math.PI/3);
+    carromCoins.push({x:cx+Math.cos(a)*ring1r, y:cy+Math.sin(a)*ring1r, vx:0, vy:0, r:COIN_R, color: i%2===0?'white':'black', potted:false});
+  }
+  const ring2r = COIN_R*4.15;
+  for(let i=0;i<12;i++){
+    const a = i*(Math.PI/6) + Math.PI/12;
+    carromCoins.push({x:cx+Math.cos(a)*ring2r, y:cy+Math.sin(a)*ring2r, vx:0, vy:0, r:COIN_R, color: i%2===0?'black':'white', potted:false});
+  }
+  carromTurn = 1;
+  carromScores = { white:0, black:0 };
+  carromQueenClaimedBy = null;
+  carromQueenPottedPendingCover = null;
+  carromStrikerBaseX = cx;
+  resetStrikerPosition();
+  updateCarromScoreboard();
+  carromRender();
+  if(!carromAnimHandle) carromLoop();
+};
+
+function resetStrikerPosition(){
+  const y = carromTurn===1 ? (PLAY_B - STRIKER_R - 6) : (PLAY_T + STRIKER_R + 6);
+  carromStriker = { x: carromStrikerBaseX, y, vx:0, vy:0, r:STRIKER_R, color:'striker', potted:false };
+}
+
+
+
+/* ---------- Rendering ---------- */
+function drawCarromGuides(){
+  const ctx = carromCtx;
+  const insetX = 70;
+  const bx1 = PLAY_L + insetX, bx2 = PLAY_R - insetX;
+  const byTop = PLAY_T + STRIKER_R + 6;
+  const byBot = PLAY_B - STRIKER_R - 6;
+  const guideColor = 'rgba(139,58,42,0.75)';
+  const dotColor = '#C0392B';
+  const dotR = 5.5;
+
+  ctx.lineCap = 'round';
+
+  // the two striker baselines
+  ctx.strokeStyle = guideColor; ctx.lineWidth = 1.6;
+  [byTop, byBot].forEach(y=>{
+    ctx.beginPath(); ctx.moveTo(bx1,y); ctx.lineTo(bx2,y); ctx.stroke();
+  });
+
+  // one curved diagonal aim-guide from each baseline end to its nearest pocket,
+  // plus the red circle marker — mirrors the corner arrows on a real board.
+  const endpoints = [
+    {x:bx1, y:byTop, pocket:POCKETS[0]},
+    {x:bx2, y:byTop, pocket:POCKETS[1]},
+    {x:bx1, y:byBot, pocket:POCKETS[2]},
+    {x:bx2, y:byBot, pocket:POCKETS[3]}
+  ];
+  endpoints.forEach(ep=>{
+    const dx = ep.pocket.x - ep.x, dy = ep.pocket.y - ep.y;
+    const dist = Math.hypot(dx,dy);
+    const ux = dx/dist, uy = dy/dist;
+    const startX = ep.x + ux*10, startY = ep.y + uy*10;
+    const endX = ep.pocket.x - ux*(POCKET_R+6), endY = ep.pocket.y - uy*(POCKET_R+6);
+    const px = -uy, py = ux;
+    const midX = (startX+endX)/2 + px*10, midY = (startY+endY)/2 + py*10;
+
+    ctx.strokeStyle = guideColor; ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(startX,startY);
+    ctx.quadraticCurveTo(midX, midY, endX, endY);
+    ctx.stroke();
+
+    const ang = Math.atan2(endY-midY, endX-midX);
+    const ah = 7;
+    ctx.beginPath();
+    ctx.moveTo(endX - Math.cos(ang-0.5)*ah, endY - Math.sin(ang-0.5)*ah);
+    ctx.lineTo(endX, endY);
+    ctx.lineTo(endX - Math.cos(ang+0.5)*ah, endY - Math.sin(ang+0.5)*ah);
+    ctx.stroke();
+
+    ctx.beginPath(); ctx.arc(ep.x, ep.y, dotR, 0, Math.PI*2);
+    ctx.fillStyle = dotColor; ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.3)'; ctx.lineWidth = 1; ctx.stroke();
+  });
+}
+function carromRender(){
+  const ctx = carromCtx;
+  ctx.clearRect(0,0,CB,CB);
+  // outermost dark edge
+  ctx.fillStyle = '#3B2314';
+  ctx.fillRect(0,0,CB,CB);
+  // main wooden frame band (two-tone, like a real board)
+  const frameInset = 7;
+  const grad = ctx.createLinearGradient(0,0,CB,CB);
+  grad.addColorStop(0, '#9C6B3A'); grad.addColorStop(1, '#6B4423');
+  ctx.fillStyle = grad;
+  ctx.fillRect(frameInset, frameInset, CB-frameInset*2, CB-frameInset*2);
+  // play surface
+  ctx.fillStyle = '#F0D9A8';
+  ctx.fillRect(PLAY_L, PLAY_T, PLAY_R-PLAY_L, PLAY_B-PLAY_T);
+  // black rounded corner cuts on the outer frame, like the reference board
+  const cornerCutR = 30;
+  ctx.fillStyle = '#1a1008';
+  [[0,0,0,Math.PI/2],[CB,0,Math.PI/2,Math.PI],[0,CB,-Math.PI/2,0],[CB,CB,Math.PI,Math.PI*1.5]].forEach(([x,y,a0,a1])=>{
+    ctx.beginPath();
+    ctx.moveTo(x,y);
+    ctx.arc(x,y,cornerCutR,a0,a1);
+    ctx.closePath();
+    ctx.fill();
+  });
+  // decorative center circle
+  ctx.strokeStyle = 'rgba(120,70,30,.55)'; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(CB/2, CB/2, COIN_R*4.6, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(CB/2, CB/2, 6, 0, Math.PI*2); ctx.stroke();
+  // real-carrom-board style guides: two red-circle baselines (striker lines)
+  // plus a curved diagonal aim arrow from each baseline end to its nearest pocket
+  drawCarromGuides();
+  // pockets
+  POCKETS.forEach(p=>{
+    ctx.beginPath(); ctx.arc(p.x, p.y, POCKET_R, 0, Math.PI*2);
+    ctx.fillStyle = '#1a1008'; ctx.fill();
+    ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 3; ctx.stroke();
+  });
+  // coins
+  carromCoins.forEach(c=>{ if(!c.potted) drawCoin(c); });
+  // striker
+  if(carromStriker && !carromStriker.potted) drawCoin(carromStriker);
+  // aim line
+  if(carromDragging && carromDragStart){
+    const dx = carromDragStart.curX - carromStriker.x;
+    const dy = carromDragStart.curY - carromStriker.y;
+    const dist = Math.min(Math.hypot(dx,dy), MAX_DRAG);
+    const angle = Math.atan2(dy,dx);
+    const shootX = carromStriker.x - Math.cos(angle)*dist;
+    const shootY = carromStriker.y - Math.sin(angle)*dist;
+    ctx.strokeStyle = 'rgba(232,193,92,.85)'; ctx.lineWidth = 2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(carromStriker.x, carromStriker.y);
+    ctx.lineTo(carromStriker.x + Math.cos(angle)*dist*3.2, carromStriker.y + Math.sin(angle)*dist*3.2);
+    ctx.stroke(); ctx.setLineDash([]);
+    // pull-back indicator
+    ctx.fillStyle = 'rgba(178,59,59,.6)';
+    ctx.beginPath(); ctx.arc(shootX, shootY, 6, 0, Math.PI*2); ctx.fill();
+  }
+}
+function drawCoin(c){
+  const ctx = carromCtx;
+  ctx.beginPath();
+  ctx.arc(c.x, c.y, c.r, 0, Math.PI*2);
+  let fill;
+  if(c.color==='white') fill = '#f5f0e6';
+  else if(c.color==='black') fill = '#2a2420';
+  else if(c.color==='red') fill = '#c0392b';
+  else fill = '#d8cdb8'; // striker
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = c.color==='striker' ? 2.5 : 1.5;
+  ctx.strokeStyle = c.color==='white' ? '#b8ab8f' : c.color==='striker' ? '#8a7a55' : '#000';
+  ctx.stroke();
+}
+
+/* ---------- Physics loop ---------- */
+let carromActive = false;
+let carromInitialized = false;
+function carromLoop(){
+  if(!carromActive){ carromAnimHandle = null; return; }
+  carromStep();
+  carromRender();
+  carromAnimHandle = requestAnimationFrame(carromLoop);
+}
+function activeBodies(){
+  const list = carromCoins.filter(c=>!c.potted);
+  if(carromStriker && !carromStriker.potted) list.push(carromStriker);
+  return list;
+}
+function carromStep(){
+  const bodies = activeBodies();
+  let anyMoving = false;
+  bodies.forEach(b=>{
+    if(Math.abs(b.vx) > MIN_SPEED || Math.abs(b.vy) > MIN_SPEED){
+      b.x += b.vx; b.y += b.vy;
+      b.vx *= FRICTION; b.vy *= FRICTION;
+      anyMoving = true;
+    } else { b.vx = 0; b.vy = 0; }
+    // wall collisions
+    if(b.x - b.r < PLAY_L){ b.x = PLAY_L + b.r; b.vx = -b.vx*RESTITUTION; }
+    if(b.x + b.r > PLAY_R){ b.x = PLAY_R - b.r; b.vx = -b.vx*RESTITUTION; }
+    if(b.y - b.r < PLAY_T){ b.y = PLAY_T + b.r; b.vy = -b.vy*RESTITUTION; }
+    if(b.y + b.r > PLAY_B){ b.y = PLAY_B - b.r; b.vy = -b.vy*RESTITUTION; }
+  });
+  // pairwise collisions
+  for(let i=0;i<bodies.length;i++){
+    for(let j=i+1;j<bodies.length;j++){
+      resolveCollision(bodies[i], bodies[j]);
+    }
+  }
+  // pocket capture
+  bodies.forEach(b=>{
+    for(const p of POCKETS){
+      if(Math.hypot(b.x-p.x, b.y-p.y) < POCKET_R*0.72){
+        b.potted = true;
+        b.vx = 0; b.vy = 0;
+        if(b === carromStriker){
+          carromPotsThisTurn.push('striker');
+        } else {
+          carromPotsThisTurn.push(b.color);
+        }
+        break;
+      }
+    }
+  });
+  const wasMoving = carromMoving;
+  carromMoving = anyMoving;
+  if(wasMoving && !anyMoving){
+    endCarromTurn();
+  }
+}
+function resolveCollision(a, b){
+  const dx = b.x-a.x, dy = b.y-a.y;
+  const dist = Math.hypot(dx,dy);
+  const minDist = a.r+b.r;
+  if(dist === 0 || dist >= minDist) return;
+  const nx = dx/dist, ny = dy/dist;
+  const overlap = (minDist-dist)/2;
+  a.x -= nx*overlap; a.y -= ny*overlap;
+  b.x += nx*overlap; b.y += ny*overlap;
+  const avn = a.vx*nx + a.vy*ny;
+  const bvn = b.vx*nx + b.vy*ny;
+  const atx = a.vx - avn*nx, aty = a.vy - avn*ny;
+  const btx = b.vx - bvn*nx, bty = b.vy - bvn*ny;
+  a.vx = atx + bvn*nx*RESTITUTION; a.vy = aty + bvn*ny*RESTITUTION;
+  b.vx = btx + avn*nx*RESTITUTION; b.vy = bty + avn*ny*RESTITUTION;
+}
+
+/* ---------- Turn logic ---------- */
+function endCarromTurn(){
+  const myColor = carromColorForTurn(carromTurn);
+  const oppColor = myColor==='white' ? 'black' : 'white';
+  let extraTurn = false;
+  let potOwn = false;
+
+  if(carromPotsThisTurn.includes('striker')){
+    toast('Foul! Striker potted.');
+    resetPottedStriker();
+    carromPotsThisTurn = [];
+    switchCarromTurn();
+    return;
+  }
+
+  carromPotsThisTurn.forEach(color=>{
+    if(color === myColor){
+      carromScores[myColor]++;
+      potOwn = true;
+    } else if(color === 'red'){
+      carromQueenPottedPendingCover = myColor;
+    } else if(color === oppColor){
+      // potting opponent's coin scores nothing, no extra turn from this alone
+    }
+  });
+
+  if(carromQueenPottedPendingCover === myColor){
+    if(potOwn){
+      carromScores[myColor] += 3;
+      carromQueenClaimedBy = myColor;
+      carromQueenPottedPendingCover = null;
+      toast('👑 Queen covered! +3 bonus');
+      extraTurn = true;
+    } else {
+      // give one more chance next shot to cover; keep queen off-board for now,
+      // but if this was already a second failed attempt, respawn it.
+      toast('👑 Queen potted — pot one more of your own to cover it!');
+      extraTurn = true; // allow immediate follow-up attempt
+    }
+  } else if(potOwn){
+    toast('Nice shot! Extra turn.');
+    extraTurn = true;
+  } else if(carromPotsThisTurn.length === 0){
+    // nothing potted, normal miss
+  }
+
+  updateCarromScoreboard();
+  carromPotsThisTurn = [];
+
+  const remaining = carromCoins.filter(c=>!c.potted && c.color!=='red').length;
+  if(remaining === 0){
+    if(carromQueenPottedPendingCover){
+      // queen never got covered, respawn and no bonus
+      respawnQueen();
+      carromQueenPottedPendingCover = null;
+    }
+    setTimeout(()=>{
+      const winner = carromScores.white > carromScores.black ? 'White' : carromScores.black > carromScores.white ? 'Black' : 'Nobody (tie)';
+      document.getElementById('carromTurnLabel').textContent = `🏆 ${winner} wins!`;
+      toast(`Game over — ${winner} wins!`);
+    }, 300);
+    return;
+  }
+
+  if(!extraTurn) switchCarromTurn();
+  else {
+    resetStrikerPosition();
+    updateCarromTurnLabel();
+    maybeTriggerAi();
+  }
+}
+function resetPottedStriker(){
+  carromStriker.potted = false;
+}
+function respawnQueen(){
+  const q = carromCoins.find(c=>c.color==='red');
+  if(q){ q.x = CB/2; q.y = CB/2; q.vx=0; q.vy=0; q.potted=false; }
+}
+function switchCarromTurn(){
+  carromTurn = carromTurn===1 ? 2 : 1;
+  resetStrikerPosition();
+  updateCarromTurnLabel();
+  maybeTriggerAi();
+}
+function updateCarromScoreboard(){
+  document.querySelector('#carromWhiteScore .val').textContent = carromScores.white;
+  document.querySelector('#carromBlackScore .val').textContent = carromScores.black;
+}
+function updateCarromTurnLabel(){
+  const label = document.getElementById('carromTurnLabel');
+  if(carromTurn===1) label.textContent = 'Your turn (White)';
+  else label.textContent = carromMode==='ai' ? "Computer's turn" : "Player 2's turn (Black)";
+}
+
+/* ---------- Input: drag to shoot ---------- */
+function carromPointerPos(e){
+  const rect = carromCanvas.getBoundingClientRect();
+  const scaleX = CB / rect.width, scaleY = CB / rect.height;
+  const cx = (e.clientX - rect.left) * scaleX;
+  const cy = (e.clientY - rect.top) * scaleY;
+  return {x:cx, y:cy};
+}
+let carromGestureMode = null; // 'position' while sliding along the baseline, 'aim' once pulled back
+const PULLBACK_THRESHOLD = 16; // px moved away from the baseline before a pull counts as aiming
+carromCanvas.addEventListener('pointerdown', (e)=>{
+  if(carromMoving || carromAiThinking) return;
+  if(carromTurn===2 && carromMode==='ai') return;
+  const pos = carromPointerPos(e);
+  // Touch anywhere near your own baseline row to take control — no arrow buttons needed.
+  if(Math.abs(pos.y - carromStriker.y) < 55){
+    carromDragging = true;
+    carromGestureMode = 'position';
+    carromStrikerBaseX = Math.max(PLAY_L+STRIKER_R+6, Math.min(PLAY_R-STRIKER_R-6, pos.x));
+    carromStriker.x = carromStrikerBaseX;
+    carromCanvas.setPointerCapture(e.pointerId);
+    carromRender();
+  }
+});
+carromCanvas.addEventListener('pointermove', (e)=>{
+  if(!carromDragging) return;
+  const pos = carromPointerPos(e);
+  const pullDir = carromTurn===1 ? 1 : -1; // which way is "backward" for this player's baseline
+  if(carromGestureMode === 'position'){
+    const pulledBack = (pos.y - carromStriker.y) * pullDir;
+    if(pulledBack > PULLBACK_THRESHOLD){
+      // switched from sliding to aiming: freeze the striker's x, start tracking the pull
+      carromGestureMode = 'aim';
+      carromDragStart = { curX:pos.x, curY:pos.y };
+    } else {
+      carromStrikerBaseX = Math.max(PLAY_L+STRIKER_R+6, Math.min(PLAY_R-STRIKER_R-6, pos.x));
+      carromStriker.x = carromStrikerBaseX;
+    }
+  } else if(carromGestureMode === 'aim'){
+    carromDragStart.curX = pos.x; carromDragStart.curY = pos.y;
+  }
+  carromRender();
+});
+carromCanvas.addEventListener('pointerup', (e)=>{
+  if(!carromDragging) return;
+  carromDragging = false;
+  if(carromGestureMode === 'aim' && carromDragStart){
+    const dx = carromDragStart.curX - carromStriker.x;
+    const dy = carromDragStart.curY - carromStriker.y;
+    const dist = Math.min(Math.hypot(dx,dy), MAX_DRAG);
+    if(dist > 6){
+      const angle = Math.atan2(dy,dx);
+      carromStriker.vx = -Math.cos(angle) * dist * POWER_SCALE;
+      carromStriker.vy = -Math.sin(angle) * dist * POWER_SCALE;
+      carromMoving = true;
+    }
+  }
+  carromGestureMode = null;
+  carromDragStart = null;
+  carromRender();
+});
+
+/* ---------- Simple AI ---------- */
+function maybeTriggerAi(){
+  if(carromMode !== 'ai' || carromTurn !== 2) return;
+  carromAiThinking = true;
+  document.getElementById('carromHint').textContent = 'Computer is aiming...';
+  setTimeout(performAiShot, 900);
+}
+function performAiShot(){
+  const myColor = 'black';
+  const myCoins = carromCoins.filter(c=>!c.potted && (c.color===myColor || (c.color==='red' && !carromQueenClaimedBy)));
+  let best = null;
+  if(myCoins.length){
+    myCoins.forEach(coin=>{
+      POCKETS.forEach(p=>{
+        const ghost = {
+          x: coin.x + (coin.x-p.x)/Math.hypot(coin.x-p.x, coin.y-p.y) * (STRIKER_R+COIN_R),
+          y: coin.y + (coin.y-p.y)/Math.hypot(coin.x-p.x, coin.y-p.y) * (STRIKER_R+COIN_R)
+        };
+        const d = Math.hypot(ghost.x-carromStriker.x, ghost.y-carromStriker.y);
+        const coinToPocket = Math.hypot(coin.x-p.x, coin.y-p.y);
+        const score = coinToPocket + d*0.4;
+        if(ghost.x>PLAY_L && ghost.x<PLAY_R && ghost.y>PLAY_T && ghost.y<PLAY_B){
+          if(!best || score < best.score) best = { ghost, score };
+        }
+      });
+    });
+  }
+  const target = best ? best.ghost : { x: CB/2 + (Math.random()-0.5)*60, y: CB/2 + (Math.random()-0.5)*60 };
+  const jitter = 8;
+  const tx = target.x + (Math.random()-0.5)*jitter;
+  const ty = target.y + (Math.random()-0.5)*jitter;
+  const dx = tx - carromStriker.x, dy = ty - carromStriker.y;
+  const angle = Math.atan2(dy,dx);
+  const power = MAX_DRAG * (0.75 + Math.random()*0.2);
+  carromStriker.vx = Math.cos(angle) * power * POWER_SCALE;
+  carromStriker.vy = Math.sin(angle) * power * POWER_SCALE;
+  carromMoving = true;
+  carromAiThinking = false;
+  document.getElementById('carromHint').textContent = 'Drag from the striker and release to shoot';
+}
+
+// Carrom, Tic Tac Toe, Chess and Ludo are lazily initialized when their
+// game card is tapped (see openGame below), so nothing runs until opened.
+
+/* ================== TIC TAC TOE ================== */
+let tttMode = '2p';
+let tttBoard = Array(9).fill(null);
+let tttCurrentPlayer = 'X';
+let tttWins=0, tttDraws=0, tttLosses=0, tttGameOver=false;
+const tttLines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+window.setTttMode = function(mode){
+  tttMode = mode;
+  document.getElementById('tttMode2p').classList.toggle('active', mode==='2p');
+  document.getElementById('tttModeAi').classList.toggle('active', mode==='ai');
+  tttNewGame();
+};
+window.tttNewGame = function(){
+  tttBoard = Array(9).fill(null);
+  tttGameOver = false;
+  tttCurrentPlayer = 'X';
+  document.getElementById('tttStatus').textContent = "X's turn";
+  tttRender();
+};
+function tttRender(){
+  document.getElementById('tttBoard').innerHTML = tttBoard.map((v,i)=>
+    `<div class="ttt-cell ${v==='O'?'o':''}" onclick="tttPlay(${i})">${v||''}</div>`
+  ).join('');
+}
+function tttWinner(board){
+  for(const [a,b,c] of tttLines){
+    if(board[a] && board[a]===board[b] && board[a]===board[c]) return board[a];
+  }
+  return board.every(v=>v) ? 'draw' : null;
+}
+window.tttPlay = function(i){
+  if(tttGameOver || tttBoard[i]) return;
+  if(tttMode==='ai' && tttCurrentPlayer==='O') return;
+  tttBoard[i] = tttCurrentPlayer;
+  tttRender();
+  let result = tttWinner(tttBoard);
+  if(result) return tttEnd(result);
+  if(tttMode === '2p'){
+    tttCurrentPlayer = tttCurrentPlayer==='X' ? 'O' : 'X';
+    document.getElementById('tttStatus').textContent = tttCurrentPlayer + "'s turn";
+  } else {
+    tttCurrentPlayer = 'O';
+    document.getElementById('tttStatus').textContent = 'Computer thinking...';
+    setTimeout(()=>{
+      const move = tttBestMove(tttBoard);
+      if(move!==-1) tttBoard[move] = 'O';
+      tttRender();
+      const r2 = tttWinner(tttBoard);
+      if(r2) return tttEnd(r2);
+      tttCurrentPlayer = 'X';
+      document.getElementById('tttStatus').textContent = "Your turn (X)";
+    }, 350);
+  }
+};
+function tttEnd(result){
+  tttGameOver = true;
+  if(result==='X'){ tttWins++; document.getElementById('tttStatus').textContent = tttMode==='ai' ? '🎉 You win!' : '🎉 X wins!'; }
+  else if(result==='O'){ tttLosses++; document.getElementById('tttStatus').textContent = tttMode==='ai' ? '💻 Computer wins!' : '🎉 O wins!'; }
+  else { tttDraws++; document.getElementById('tttStatus').textContent = "🤝 It's a draw!"; }
+  document.getElementById('tttWins').textContent = tttWins;
+  document.getElementById('tttDraws').textContent = tttDraws;
+  document.getElementById('tttLosses').textContent = tttLosses;
+}
+function tttBestMove(board){
+  let bestScore=-Infinity, move=-1;
+  for(let i=0;i<9;i++){
+    if(!board[i]){
+      board[i]='O';
+      const score = tttMinimax(board,0,false);
+      board[i]=null;
+      if(score>bestScore){ bestScore=score; move=i; }
+    }
+  }
+  return move;
+}
+function tttMinimax(board,depth,isMax){
+  const result = tttWinner(board);
+  if(result==='O') return 10-depth;
+  if(result==='X') return depth-10;
+  if(result==='draw') return 0;
+  if(isMax){
+    let best=-Infinity;
+    for(let i=0;i<9;i++){ if(!board[i]){ board[i]='O'; best=Math.max(best,tttMinimax(board,depth+1,false)); board[i]=null; } }
+    return best;
+  } else {
+    let best=Infinity;
+    for(let i=0;i<9;i++){ if(!board[i]){ board[i]='X'; best=Math.min(best,tttMinimax(board,depth+1,true)); board[i]=null; } }
+    return best;
+  }
+}
+
+/* ================== CHESS ================== */
+let chessMode = '2p';
+let chessBoard = [];
+let chessTurn = 'w';
+let chessCastling = { wK:true, wQ:true, bK:true, bQ:true };
+let chessEnPassant = null; // {row,col} square that can be captured en-passant
+let chessSelected = null;
+let chessLegalForSelected = [];
+let chessGameOver = false;
+let chessPendingPromotion = null; // {from,to}
+
+const CHESS_VAL = { p:1, n:3, b:3, r:5, q:9, k:0 };
+
+window.setChessMode = function(mode){
+  chessMode = mode;
+  document.getElementById('chessMode2p').classList.toggle('active', mode==='2p');
+  document.getElementById('chessModeAi').classList.toggle('active', mode==='ai');
+  chessNewGame();
+};
+window.chessNewGame = function(){
+  chessBoard = [
+    [{t:'r',c:'b'},{t:'n',c:'b'},{t:'b',c:'b'},{t:'q',c:'b'},{t:'k',c:'b'},{t:'b',c:'b'},{t:'n',c:'b'},{t:'r',c:'b'}],
+    Array(8).fill(null).map(()=>({t:'p',c:'b'})),
+    Array(8).fill(null), Array(8).fill(null), Array(8).fill(null), Array(8).fill(null),
+    Array(8).fill(null).map(()=>({t:'p',c:'w'})),
+    [{t:'r',c:'w'},{t:'n',c:'w'},{t:'b',c:'w'},{t:'q',c:'w'},{t:'k',c:'w'},{t:'b',c:'w'},{t:'n',c:'w'},{t:'r',c:'w'}]
+  ];
+  chessTurn = 'w';
+  chessCastling = { wK:true, wQ:true, bK:true, bQ:true };
+  chessEnPassant = null;
+  chessSelected = null;
+  chessLegalForSelected = [];
+  chessGameOver = false;
+  document.getElementById('chessStatus').textContent = 'White to move';
+  document.getElementById('chessPromo').style.display = 'none';
+  chessRender();
+};
+
+function chessInBounds(r,c){ return r>=0 && r<8 && c>=0 && c<8; }
+function chessClone(board){ return board.map(row=>row.map(cell=>cell?{...cell}:null)); }
+function chessFindKing(board,color){
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(p && p.t==='k' && p.c===color) return {r,c};
+  }
+  return null;
+}
+function chessPseudoAttacks(board, r, c, piece){
+  // returns list of {r,c} this piece attacks/could move to (pseudo, ignoring own-king-safety)
+  const moves = [];
+  const color = piece.c;
+  const dir = color==='w' ? -1 : 1;
+  if(piece.t === 'p'){
+    // captures only (for attack-detection use); actual move gen handles forward separately
+    [[dir,-1],[dir,1]].forEach(([dr,dc])=>{
+      const nr=r+dr, nc=c+dc;
+      if(chessInBounds(nr,nc)) moves.push({r:nr,c:nc});
+    });
+  } else if(piece.t === 'n'){
+    const offs = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+    offs.forEach(([dr,dc])=>{ const nr=r+dr,nc=c+dc; if(chessInBounds(nr,nc)) moves.push({r:nr,c:nc}); });
+  } else if(piece.t === 'k'){
+    for(let dr=-1;dr<=1;dr++) for(let dc=-1;dc<=1;dc++){
+      if(dr===0&&dc===0) continue;
+      const nr=r+dr,nc=c+dc; if(chessInBounds(nr,nc)) moves.push({r:nr,c:nc});
+    }
+  } else {
+    const dirs = piece.t==='b' ? [[-1,-1],[-1,1],[1,-1],[1,1]]
+                : piece.t==='r' ? [[-1,0],[1,0],[0,-1],[0,1]]
+                : [[-1,-1],[-1,1],[1,-1],[1,1],[-1,0],[1,0],[0,-1],[0,1]];
+    dirs.forEach(([dr,dc])=>{
+      let nr=r+dr, nc=c+dc;
+      while(chessInBounds(nr,nc)){
+        moves.push({r:nr,c:nc});
+        if(board[nr][nc]) break;
+        nr+=dr; nc+=dc;
+      }
+    });
+  }
+  return moves;
+}
+function chessIsSquareAttacked(board, r, c, byColor){
+  for(let rr=0; rr<8; rr++) for(let cc=0; cc<8; cc++){
+    const p = board[rr][cc];
+    if(p && p.c === byColor){
+      const attacks = chessPseudoAttacks(board, rr, cc, p);
+      if(attacks.some(m=>m.r===r && m.c===c)) return true;
+    }
+  }
+  return false;
+}
+function chessIsInCheck(board, color){
+  const k = chessFindKing(board, color);
+  if(!k) return false;
+  return chessIsSquareAttacked(board, k.r, k.c, color==='w'?'b':'w');
+}
+function chessPseudoMoves(board, r, c, castlingRights, enPassant){
+  const piece = board[r][c];
+  if(!piece) return [];
+  const moves = [];
+  const color = piece.c;
+  if(piece.t === 'p'){
+    const dir = color==='w' ? -1 : 1;
+    const startRow = color==='w' ? 6 : 1;
+    const lastRow = color==='w' ? 0 : 7;
+    if(chessInBounds(r+dir,c) && !board[r+dir][c]){
+      moves.push({r:r+dir,c, promo: r+dir===lastRow});
+      if(r===startRow && !board[r+2*dir][c]){
+        moves.push({r:r+2*dir, c, doubleStep:true});
+      }
+    }
+    [[dir,-1],[dir,1]].forEach(([dr,dc])=>{
+      const nr=r+dr, nc=c+dc;
+      if(!chessInBounds(nr,nc)) return;
+      const target = board[nr][nc];
+      if(target && target.c !== color){
+        moves.push({r:nr,c:nc, promo: nr===lastRow, capture:true});
+      } else if(!target && enPassant && enPassant.r===nr && enPassant.c===nc){
+        moves.push({r:nr,c:nc, enPassant:true, capture:true});
+      }
+    });
+  } else {
+    chessPseudoAttacks(board,r,c,piece).forEach(m=>{
+      const target = board[m.r][m.c];
+      if(!target || target.c !== color){
+        moves.push({r:m.r, c:m.c, capture: !!target});
+      }
+    });
+    if(piece.t === 'k'){
+      const row = color==='w' ? 7 : 0;
+      const kSideRight = color==='w' ? castlingRights.wK : castlingRights.bK;
+      const qSideRight = color==='w' ? castlingRights.wQ : castlingRights.bQ;
+      const oppColor = color==='w' ? 'b' : 'w';
+      if(r===row && c===4 && !chessIsSquareAttacked(board,row,4,oppColor)){
+        if(kSideRight && !board[row][5] && !board[row][6] && board[row][7] && board[row][7].t==='r'
+           && !chessIsSquareAttacked(board,row,5,oppColor) && !chessIsSquareAttacked(board,row,6,oppColor)){
+          moves.push({r:row,c:6, castle:'K'});
+        }
+        if(qSideRight && !board[row][3] && !board[row][2] && !board[row][1] && board[row][0] && board[row][0].t==='r'
+           && !chessIsSquareAttacked(board,row,3,oppColor) && !chessIsSquareAttacked(board,row,2,oppColor)){
+          moves.push({r:row,c:2, castle:'Q'});
+        }
+      }
+    }
+  }
+  return moves;
+}
+function chessApplyMove(board, from, to, move, castlingRights){
+  const newBoard = chessClone(board);
+  const piece = newBoard[from.r][from.c];
+  let newEnPassant = null;
+  if(move.enPassant){
+    newBoard[from.r][to.c] = null; // captured pawn is beside, not on target square
+  }
+  newBoard[to.r][to.c] = { ...piece };
+  newBoard[from.r][from.c] = null;
+  if(move.promo && move.promotion){
+    newBoard[to.r][to.c] = { t: move.promotion, c: piece.c };
+  }
+  if(move.doubleStep){
+    newEnPassant = { r:(from.r+to.r)/2, c: from.c };
+  }
+  const newCastling = { ...castlingRights };
+  if(piece.t === 'k'){
+    if(piece.c==='w'){ newCastling.wK=false; newCastling.wQ=false; } else { newCastling.bK=false; newCastling.bQ=false; }
+    if(move.castle === 'K'){
+      newBoard[from.r][5] = newBoard[from.r][7];
+      newBoard[from.r][7] = null;
+    } else if(move.castle === 'Q'){
+      newBoard[from.r][3] = newBoard[from.r][0];
+      newBoard[from.r][0] = null;
+    }
+  }
+  if(piece.t === 'r'){
+    if(from.r===7 && from.c===0) newCastling.wQ=false;
+    if(from.r===7 && from.c===7) newCastling.wK=false;
+    if(from.r===0 && from.c===0) newCastling.bQ=false;
+    if(from.r===0 && from.c===7) newCastling.bK=false;
+  }
+  // rook captured on its home square also revokes castling
+  if(to.r===7 && to.c===0) newCastling.wQ=false;
+  if(to.r===7 && to.c===7) newCastling.wK=false;
+  if(to.r===0 && to.c===0) newCastling.bQ=false;
+  if(to.r===0 && to.c===7) newCastling.bK=false;
+  return { board:newBoard, castling:newCastling, enPassant:newEnPassant };
+}
+function chessLegalMoves(board, r, c, castlingRights, enPassant){
+  const piece = board[r][c];
+  if(!piece) return [];
+  const pseudo = chessPseudoMoves(board, r, c, castlingRights, enPassant);
+  return pseudo.filter(m=>{
+    const result = chessApplyMove(board, {r,c}, {r:m.r,c:m.c}, m, castlingRights);
+    return !chessIsInCheck(result.board, piece.c);
+  });
+}
+function chessAllLegalMoves(board, color, castlingRights, enPassant){
+  const all = [];
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const p = board[r][c];
+    if(p && p.c===color){
+      chessLegalMoves(board,r,c,castlingRights,enPassant).forEach(m=>all.push({from:{r,c}, move:m}));
+    }
+  }
+  return all;
+}
+
+function chessRender(){
+  const boardEl = document.getElementById('chessBoard');
+  const symbols = {
+    w:{k:'♔',q:'♕',r:'♖',b:'♗',n:'♘',p:'♙'},
+    b:{k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'}
+  };
+  const inCheckColor = chessGameOver ? null : (chessIsInCheck(chessBoard,'w') ? 'w' : chessIsInCheck(chessBoard,'b') ? 'b' : null);
+  let kingPos = inCheckColor ? chessFindKing(chessBoard, inCheckColor) : null;
+
+  let html = '';
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const light = (r+c)%2===0;
+      const piece = chessBoard[r][c];
+      const isSelected = chessSelected && chessSelected.r===r && chessSelected.c===c;
+      const isCheckSq = kingPos && kingPos.r===r && kingPos.c===c;
+      const legalHere = chessLegalForSelected.find(m=>m.r===r && m.c===c);
+      html += `<div class="chess-cell ${light?'light':'dark'} ${isSelected?'selected':''} ${isCheckSq?'check':''}" onclick="chessClickCell(${r},${c})">`;
+      if(piece) html += `<span class="chess-piece ${piece.c}">${symbols[piece.c][piece.t]}</span>`;
+      if(legalHere) html += `<div class="dot ${legalHere.capture?'capture':''}"></div>`;
+      html += `</div>`;
+    }
+  }
+  boardEl.innerHTML = html;
+}
+
+window.chessClickCell = function(r,c){
+  if(chessGameOver || chessPendingPromotion) return;
+  if(chessMode==='ai' && chessTurn==='b') return;
+  const piece = chessBoard[r][c];
+
+  if(chessSelected){
+    const move = chessLegalForSelected.find(m=>m.r===r && m.c===c);
+    if(move){
+      chessMakeMoveOnBoard(chessSelected, move);
+      return;
+    }
+  }
+  if(piece && piece.c === chessTurn){
+    chessSelected = {r,c};
+    chessLegalForSelected = chessLegalMoves(chessBoard, r, c, chessCastling, chessEnPassant);
+  } else {
+    chessSelected = null;
+    chessLegalForSelected = [];
+  }
+  chessRender();
+};
+
+function chessMakeMoveOnBoard(from, move){
+  if(move.promo){
+    chessPendingPromotion = { from, move };
+    chessShowPromoPicker();
+    return;
+  }
+  chessFinalizeMove(from, move);
+}
+function chessShowPromoPicker(){
+  const el = document.getElementById('chessPromo');
+  const color = chessTurn;
+  const syms = color==='w' ? {q:'♕',r:'♖',b:'♗',n:'♘'} : {q:'♛',r:'♜',b:'♝',n:'♞'};
+  el.innerHTML = Object.keys(syms).map(k=>`<button onclick="chessChoosePromotion('${k}')">${syms[k]}</button>`).join('');
+  el.style.display = 'flex';
+}
+window.chessChoosePromotion = function(type){
+  if(!chessPendingPromotion) return;
+  const { from, move } = chessPendingPromotion;
+  move.promotion = type;
+  document.getElementById('chessPromo').style.display = 'none';
+  chessPendingPromotion = null;
+  chessFinalizeMove(from, move);
+};
+function chessFinalizeMove(from, move){
+  const result = chessApplyMove(chessBoard, from, {r:move.r,c:move.c}, move, chessCastling);
+  chessBoard = result.board;
+  chessCastling = result.castling;
+  chessEnPassant = result.enPassant;
+  chessTurn = chessTurn==='w' ? 'b' : 'w';
+  chessSelected = null;
+  chessLegalForSelected = [];
+  chessCheckGameEnd();
+  chessRender();
+  if(!chessGameOver && chessMode==='ai' && chessTurn==='b'){
+    document.getElementById('chessStatus').textContent = 'Computer thinking...';
+    setTimeout(chessAiMove, 500);
+  }
+}
+function chessCheckGameEnd(){
+  const moves = chessAllLegalMoves(chessBoard, chessTurn, chessCastling, chessEnPassant);
+  const inCheck = chessIsInCheck(chessBoard, chessTurn);
+  const whoLabel = chessTurn==='w' ? 'White' : 'Black';
+  if(moves.length === 0){
+    chessGameOver = true;
+    if(inCheck){
+      const winner = chessTurn==='w' ? 'Black' : 'White';
+      document.getElementById('chessStatus').textContent = `♛ Checkmate — ${winner} wins!`;
+      toast(`Checkmate! ${winner} wins`);
+    } else {
+      document.getElementById('chessStatus').textContent = '🤝 Stalemate — draw';
+      toast('Stalemate — draw');
+    }
+  } else {
+    document.getElementById('chessStatus').textContent = inCheck ? `${whoLabel} is in check!` : `${whoLabel} to move`;
+  }
+}
+function chessAiMove(){
+  const moves = chessAllLegalMoves(chessBoard, 'b', chessCastling, chessEnPassant);
+  if(!moves.length) return;
+  let best = [], bestScore = -Infinity;
+  moves.forEach(({from,move})=>{
+    const mv = move.promo ? { ...move, promotion:'q' } : move;
+    const result = chessApplyMove(chessBoard, from, {r:mv.r,c:mv.c}, mv, chessCastling);
+    let score = 0;
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      const p = result.board[r][c];
+      if(p) score += CHESS_VAL[p.t] * (p.c==='b' ? 1 : -1);
+    }
+    if(chessIsInCheck(result.board, 'w')) score += 0.5;
+    score += Math.random()*0.1;
+    if(score > bestScore){ bestScore = score; best = [{from, move: mv}]; }
+    else if(score === bestScore){ best.push({from, move: mv}); }
+  });
+  const choice = best[Math.floor(Math.random()*best.length)];
+  chessMakeMoveOnBoard(choice.from, choice.move);
+}
+
+/* ================== LUDO ================== */
+const LUDO_GRID = 15;
+const LUDO_CELL = 27;
+const LUDO_MARGIN = 4.5;
+const LUDO_RING_LEN = 52;          // cells on the outer loop
+const LUDO_RING_STEPS = 51;        // a token walks 51 ring cells, then turns into its home column
+const LUDO_HOME_LEN = 5;
+const LUDO_FINISH = LUDO_RING_STEPS + LUDO_HOME_LEN + 1; // 57 = centre triangle
+
+// Standard 52-cell ludo loop, clockwise, starting at Green's start cell.
+// (Same layout as the reference board picture.)
+const LUDO_PATH = [
+  {row:6,col:1},{row:6,col:2},{row:6,col:3},{row:6,col:4},{row:6,col:5},          // 0-4   left arm, top row
+  {row:5,col:6},{row:4,col:6},{row:3,col:6},{row:2,col:6},{row:1,col:6},{row:0,col:6}, // 5-10  top arm, left col
+  {row:0,col:7},                                                                    // 11    top arrow cell
+  {row:0,col:8},                                                                    // 12
+  {row:1,col:8},{row:2,col:8},{row:3,col:8},{row:4,col:8},{row:5,col:8},          // 13-17 top arm, right col
+  {row:6,col:9},{row:6,col:10},{row:6,col:11},{row:6,col:12},{row:6,col:13},{row:6,col:14}, // 18-23 right arm, top row
+  {row:7,col:14},                                                                   // 24    right arrow cell
+  {row:8,col:14},                                                                   // 25
+  {row:8,col:13},{row:8,col:12},{row:8,col:11},{row:8,col:10},{row:8,col:9},      // 26-30 right arm, bottom row
+  {row:9,col:8},{row:10,col:8},{row:11,col:8},{row:12,col:8},{row:13,col:8},{row:14,col:8}, // 31-36 bottom arm, right col
+  {row:14,col:7},                                                                   // 37    bottom arrow cell
+  {row:14,col:6},                                                                   // 38
+  {row:13,col:6},{row:12,col:6},{row:11,col:6},{row:10,col:6},{row:9,col:6},      // 39-43 bottom arm, left col
+  {row:8,col:5},{row:8,col:4},{row:8,col:3},{row:8,col:2},{row:8,col:1},{row:8,col:0}, // 44-49 left arm, bottom row
+  {row:7,col:0},                                                                    // 50    left arrow cell
+  {row:6,col:0}                                                                     // 51
+];
+
+// Board colours taken from the reference picture.
+// start = index of the coloured start cell on LUDO_PATH.
+const LUDO_COLORS = {
+  green:  { hex:'#0AA23A', start:0  },
+  yellow: { hex:'#FFD500', start:13 },
+  blue:   { hex:'#1C7FE6', start:26 },
+  red:    { hex:'#EF1B1B', start:39 }
+};
+// Star (safe) cells: 8 steps after each start cell. Start cells are safe too.
+const LUDO_STAR_IDX = [8, 21, 34, 47];
+const LUDO_SAFE_IDX = new Set([0, 13, 26, 39, ...LUDO_STAR_IDX]);
+
+const LUDO_HOME_CELLS = {
+  green:  [{row:7,col:1},{row:7,col:2},{row:7,col:3},{row:7,col:4},{row:7,col:5}],
+  yellow: [{row:1,col:7},{row:2,col:7},{row:3,col:7},{row:4,col:7},{row:5,col:7}],
+  blue:   [{row:7,col:13},{row:7,col:12},{row:7,col:11},{row:7,col:10},{row:7,col:9}],
+  red:    [{row:13,col:7},{row:12,col:7},{row:11,col:7},{row:10,col:7},{row:9,col:7}]
+};
+function ludoHomeCells(color){ return LUDO_HOME_CELLS[color]; }
+// top-left corner (in cells) of each 6x6 yard
+const LUDO_YARD_ORIGIN = {
+  green:{row:0,col:0}, yellow:{row:0,col:9}, red:{row:9,col:0}, blue:{row:9,col:9}
+};
+// centres (in cell units) of the 4 token discs inside each yard
+const LUDO_YARD_SLOTS = {
+  green:  [{row:2,col:2},{row:2,col:4},{row:4,col:2},{row:4,col:4}],
+  yellow: [{row:2,col:11},{row:2,col:13},{row:4,col:11},{row:4,col:13}],
+  red:    [{row:11,col:2},{row:11,col:4},{row:13,col:2},{row:13,col:4}],
+  blue:   [{row:11,col:11},{row:11,col:13},{row:13,col:11},{row:13,col:13}]
+};
+// where finished tokens sit inside the centre triangles (edge coords, in cells)
+const LUDO_FINISH_SPOT = {
+  green:{row:7.5,col:6.65,axis:'y'}, yellow:{row:6.65,col:7.5,axis:'x'},
+  blue:{row:7.5,col:8.35,axis:'y'},  red:{row:8.35,col:7.5,axis:'x'}
+};
+
+let ludoPlayers = []; // [{color, isAi}]
+let ludoTokens = [];  // [{color, idx, relPos}]  relPos: 0=yard, 1-51=ring, 52-56=home column, 57=finished (centre)
+let ludoTurnIdx = 0;
+let ludoDiceValue = null;
+let ludoRolling = false;
+let ludoAnimToken = null; // token currently mid-slide: {color, idx, x, y}
+let ludoConsecutiveSixes = 0;
+let ludoGameOver = false;
+const LUDO_ALL_COLORS = ['green','yellow','blue','red']; // clockwise turn order
+
+function ludoSetupConfigUI(){
+  const el = document.getElementById('ludoPlayerConfig');
+  el.innerHTML = LUDO_ALL_COLORS.map((color,i)=>`
+    <div class="ludo-player-row">
+      <span><span class="dot" style="background:${LUDO_COLORS[color].hex};"></span>${color[0].toUpperCase()+color.slice(1)}</span>
+      <select id="ludoSel-${color}">
+        <option value="off" ${i>1?'':''}>Off</option>
+        <option value="human" ${i<2?'selected':''}>Human</option>
+        <option value="ai">Computer</option>
+      </select>
+    </div>
+  `).join('');
+  // sensible default: Red & Yellow Human, Green & Blue Off
+  document.getElementById('ludoSel-red').value = 'human';
+  document.getElementById('ludoSel-green').value = 'off';
+  document.getElementById('ludoSel-yellow').value = 'human';
+  document.getElementById('ludoSel-blue').value = 'off';
+}
+window.resetLudoSetup = function(){
+  document.getElementById('ludoGame').style.display = 'none';
+  document.getElementById('ludoSetup').style.display = 'block';
+  ludoSetupConfigUI();
+};
+window.startLudo = function(){
+  ludoPlayers = [];
+  LUDO_ALL_COLORS.forEach(color=>{
+    const val = document.getElementById('ludoSel-'+color).value;
+    if(val !== 'off') ludoPlayers.push({ color, isAi: val==='ai' });
+  });
+  if(ludoPlayers.length < 2) return toast('Pick at least 2 players');
+  ludoTokens = [];
+  ludoPlayers.forEach(p=>{
+    for(let i=0;i<4;i++) ludoTokens.push({ color:p.color, idx:i, relPos:0 });
+  });
+  ludoTurnIdx = 0;
+  ludoDiceValue = null;
+  ludoConsecutiveSixes = 0;
+  ludoGameOver = false;
+  document.getElementById('ludoSetup').style.display = 'none';
+  document.getElementById('ludoGame').style.display = 'block';
+  ludoUpdateStatus();
+  ludoRender();
+  ludoMaybeAiTurn();
+};
+
+function ludoCurrentPlayer(){ return ludoPlayers[ludoTurnIdx]; }
+function ludoUpdateStatus(){
+  const p = ludoCurrentPlayer();
+  const label = p.color[0].toUpperCase()+p.color.slice(1);
+  document.getElementById('ludoStatus').textContent = ludoGameOver ? document.getElementById('ludoStatus').textContent : `${label}'s turn${p.isAi ? ' (Computer)' : ''}`;
+  document.getElementById('ludoHint').textContent = p.isAi ? 'Computer is playing...' : 'Tap dice to roll';
+}
+function ludoAbsIdx(color, relPos){
+  // relPos 1-51 -> index on LUDO_PATH
+  return (LUDO_COLORS[color].start + relPos - 1) % LUDO_RING_LEN;
+}
+function ludoAbsCell(color, relPos){
+  return LUDO_PATH[ludoAbsIdx(color, relPos)];
+}
+function ludoCellForToken(t){
+  if(t.relPos === 0 || t.relPos >= LUDO_FINISH) return null; // in yard / in the centre
+  if(t.relPos > LUDO_RING_STEPS) return ludoHomeCells(t.color)[t.relPos-LUDO_RING_STEPS-1];
+  return ludoAbsCell(t.color, t.relPos);
+}
+function ludoIsSafeAbsCell(absIdx){
+  return LUDO_SAFE_IDX.has(absIdx);
+}
+function ludoTokensAt(row,col, excludeColor, excludeIdx){
+  return ludoTokens.filter(t=>{
+    if(t.color===excludeColor && t.idx===excludeIdx) return false;
+    const cell = ludoCellForToken(t);
+    return cell && cell.row===row && cell.col===col;
+  });
+}
+function ludoMovableTokens(color, dice){
+  return ludoTokens.filter(t=>{
+    if(t.color !== color) return false;
+    if(t.relPos === 0) return dice === 6;
+    return t.relPos + dice <= LUDO_FINISH;
+  });
+}
+let ludoAudioCtx = null;
+let ludoSoundOn = true;
+let ludoMasterGain = null;
+function ludoGetAudioCtx(){
+  if(!ludoSoundOn) return null;
+  if(!ludoAudioCtx){
+    try{
+      ludoAudioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      ludoMasterGain = ludoAudioCtx.createGain();
+      ludoMasterGain.gain.value = 0.9;
+      ludoMasterGain.connect(ludoAudioCtx.destination);
+    }catch(e){ return null; }
+  }
+  if(ludoAudioCtx.state === 'suspended') ludoAudioCtx.resume().catch(()=>{});
+  return ludoAudioCtx;
+}
+// A warm, rounded tone: sine (or triangle) core with a gentle lowpass and a
+// natural attack/decay envelope, instead of a raw, buzzy oscillator beep.
+function ludoTone(freq, dur, opts){
+  const ctx = ludoGetAudioCtx();
+  if(!ctx) return;
+  opts = opts || {};
+  const t0 = ctx.currentTime + (opts.delay||0);
+  const vol = opts.vol != null ? opts.vol : 0.12;
+  const osc = ctx.createOscillator();
+  osc.type = opts.type || 'sine';
+  osc.frequency.setValueAtTime(freq, t0);
+  if(opts.slideTo) osc.frequency.exponentialRampToValueAtTime(opts.slideTo, t0+dur);
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = opts.cutoff || 2600;
+  filter.Q.value = 0.7;
+  const gain = ctx.createGain();
+  const attack = opts.attack || 0.012;
+  gain.gain.setValueAtTime(0, t0);
+  gain.gain.linearRampToValueAtTime(vol, t0+attack);
+  gain.gain.exponentialRampToValueAtTime(0.0008, t0+dur);
+  osc.connect(filter); filter.connect(gain); gain.connect(ludoMasterGain);
+  osc.start(t0); osc.stop(t0+dur+0.04);
+  if(opts.overtone){
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(freq*2, t0);
+    const gain2 = ctx.createGain();
+    gain2.gain.setValueAtTime(0, t0);
+    gain2.gain.linearRampToValueAtTime(vol*0.25, t0+attack);
+    gain2.gain.exponentialRampToValueAtTime(0.0008, t0+dur*0.7);
+    osc2.connect(gain2); gain2.connect(ludoMasterGain);
+    osc2.start(t0); osc2.stop(t0+dur+0.04);
+  }
+}
+// A short, filtered noise burst — used for the physical "tock" of a die,
+// far more convincing than a synth beep for a percussive knock.
+function ludoKnock(dur, vol, delay, freq, q){
+  const ctx = ludoGetAudioCtx();
+  if(!ctx) return;
+  const t0 = ctx.currentTime + (delay||0);
+  const n = Math.max(1, Math.floor(ctx.sampleRate*dur));
+  const buffer = ctx.createBuffer(1, n, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<n;i++) data[i] = (Math.random()*2-1) * Math.pow(1-i/n, 1.6);
+  const src = ctx.createBufferSource();
+  src.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = freq || 1500;
+  filter.Q.value = q || 1.4;
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(vol||0.16, t0);
+  gain.gain.exponentialRampToValueAtTime(0.0008, t0+dur);
+  src.connect(filter); filter.connect(gain); gain.connect(ludoMasterGain);
+  src.start(t0);
+}
+function ludoSoundDiceTick(freq, vol, dur, q){ ludoKnock(dur||0.05, vol||0.13, 0, freq||(1100+Math.random()*500), q||2.2); }
+function ludoSoundDiceLand(){
+  ludoKnock(0.11, 0.24, 0, 340, 1.4);
+  ludoTone(210, 0.14, {vol:0.06, cutoff:1000});
+  ludoKnock(0.05, 0.07, 0.09, 480, 2.0); // tiny secondary bounce
+}
+function ludoSoundStep(){ ludoTone(660, 0.1, {vol:0.09, cutoff:3200, overtone:true}); }
+function ludoSoundCapture(){
+  ludoTone(392, 0.16, {type:'triangle', vol:0.13, cutoff:1800, slideTo:260});
+  ludoTone(261, 0.22, {type:'triangle', vol:0.11, cutoff:1400, delay:0.09});
+}
+function ludoSoundHome(){
+  ludoTone(523, 0.16, {vol:0.13, cutoff:3000, overtone:true});
+  ludoTone(784, 0.22, {vol:0.13, cutoff:3400, overtone:true, delay:0.11});
+}
+function ludoSoundWin(){
+  [523,659,784,1047,1319].forEach((f,i)=>ludoTone(f, 0.35, {vol:0.12, cutoff:3600, overtone:true, delay:i*0.11}));
+}
+function ludoSoundNoMove(){ ludoTone(330, 0.14, {type:'triangle', vol:0.06, cutoff:1200}); }
+window.toggleLudoSound = function(){
+  ludoSoundOn = !ludoSoundOn;
+  const btn = document.getElementById('ludoSoundBtn');
+  if(btn) btn.textContent = ludoSoundOn ? '🔊' : '🔇';
+};
+
+function ludoAnimateDiceThenRoll(){
+  ludoRolling = true;
+  const diceEl = document.getElementById('ludoDice');
+  diceEl.classList.add('rolling');
+  const totalKnocks = 10 + Math.floor(Math.random()*3); // 10-12 knocks: fast rattle -> slow bounce
+  let count = 0;
+  function nextKnock(){
+    count++;
+    const progress = count / totalKnocks; // 0 -> 1 as the roll settles
+    diceEl.textContent = '⚀⚁⚂⚃⚄⚅'[Math.floor(Math.random()*6)];
+    // starts fast, light and high-pitched (rattle); ends slower, heavier and lower (settling bounce)
+    const freq = 1500 - progress*950 + (Math.random()*160-80);
+    const vol  = 0.08 + progress*0.11;
+    const dur  = 0.03 + progress*0.05;
+    const q    = 1.7 + progress*1.4;
+    ludoSoundDiceTick(freq, vol, dur, q);
+    if(count < totalKnocks){
+      const interval = 38 + progress*progress*110; // accelerating gap = deceleration feel
+      setTimeout(nextKnock, interval);
+    } else {
+      diceEl.classList.remove('rolling');
+      ludoSoundDiceLand();
+      ludoDoRoll();
+    }
+  }
+  nextKnock();
+}
+window.rollLudoDice = function(){
+  if(ludoRolling || ludoGameOver) return;
+  const p = ludoCurrentPlayer();
+  if(p.isAi) return;
+  ludoAnimateDiceThenRoll();
+};
+function ludoDoRoll(){
+  ludoRolling = true;
+  const dice = 1 + Math.floor(Math.random()*6);
+  ludoDiceValue = dice;
+  document.getElementById('ludoDice').textContent = '⚀⚁⚂⚃⚄⚅'[dice-1];
+  const p = ludoCurrentPlayer();
+  const movable = ludoMovableTokens(p.color, dice);
+  if(!movable.length){
+    toast(`${p.color} rolled ${dice} — no moves`);
+    ludoSoundNoMove();
+    ludoRolling = false;
+    if(dice === 6){
+      ludoConsecutiveSixes++;
+      if(ludoConsecutiveSixes >= 3){ ludoConsecutiveSixes = 0; ludoNextTurn(); }
+      else { ludoDiceValue = null; ludoUpdateStatus(); ludoMaybeAiTurn(); }
+    } else {
+      ludoConsecutiveSixes = 0;
+      ludoNextTurn();
+    }
+    return;
+  }
+  if(p.isAi){
+    setTimeout(()=>{
+      const chosen = ludoChooseAiToken(movable, dice);
+      ludoMoveToken(chosen, dice);
+    }, 500);
+  } else {
+    document.getElementById('ludoHint').textContent = `Rolled ${dice} — tap a highlighted token`;
+    ludoRender(movable);
+  }
+}
+function ludoChooseAiToken(movable, dice){
+  // prefer: capture > finish > safe cell > leave yard > advance the furthest token
+  let best = null, bestScore = -Infinity;
+  movable.forEach(t=>{
+    const newPos = t.relPos === 0 ? 1 : t.relPos + dice;
+    let score = newPos;
+    if(t.relPos === 0) score += 5;
+    if(newPos === LUDO_FINISH) score += 20;
+    else if(newPos > LUDO_RING_STEPS) score += 3; // home column can't be attacked
+    else {
+      const idx = ludoAbsIdx(t.color, newPos);
+      if(LUDO_SAFE_IDX.has(idx)) score += 4;
+      else if(ludoTokens.some(o=>o.color!==t.color && o.relPos>=1 && o.relPos<=LUDO_RING_STEPS && ludoAbsIdx(o.color,o.relPos)===idx)) score += 15;
+    }
+    if(score > bestScore){ bestScore = score; best = t; }
+  });
+  return best;
+}
+function ludoPixelForRelPos(token, relPos){
+  const C = LUDO_CELL, M = LUDO_MARGIN;
+  if(relPos === 0){
+    const s = LUDO_YARD_SLOTS[token.color][token.idx % 4];
+    return { x: M + s.col*C, y: M + s.row*C };
+  }
+  if(relPos >= LUDO_FINISH){
+    const f = LUDO_FINISH_SPOT[token.color];
+    return { x: M + f.col*C, y: M + f.row*C };
+  }
+  const cell = ludoCellForToken({ color: token.color, relPos });
+  return { x: M + (cell.col+0.5)*C, y: M + (cell.row+0.5)*C };
+}
+function ludoMoveToken(token, dice){
+  ludoRolling = true;
+  const fromYard = token.relPos === 0;
+  const startPos = token.relPos;
+  const endPos = fromYard ? 1 : token.relPos + dice;
+  const waypoints = fromYard ? [0, 1] : [];
+  if(!fromYard){ for(let r=startPos; r<=endPos; r++) waypoints.push(r); }
+  let seg = 0;
+  function animateSegment(){
+    const fromRel = waypoints[seg], toRel = waypoints[seg+1];
+    const from = ludoPixelForRelPos(token, fromRel);
+    const to = ludoPixelForRelPos(token, toRel);
+    const dur = 150;
+    const t0 = performance.now();
+    ludoSoundStep();
+    function frame(now){
+      const p = Math.min(1, (now-t0)/dur);
+      ludoAnimToken = { color: token.color, idx: token.idx, x: from.x+(to.x-from.x)*p, y: from.y+(to.y-from.y)*p };
+      ludoRender();
+      if(p < 1){
+        requestAnimationFrame(frame);
+      } else {
+        token.relPos = toRel;
+        ludoAnimToken = null;
+        seg++;
+        if(seg < waypoints.length-1) requestAnimationFrame(animateSegment);
+        else ludoFinishMove(token);
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  animateSegment();
+}
+function ludoFinishMove(token){
+  if(token.relPos <= LUDO_RING_STEPS){
+    const absIdx = ludoAbsIdx(token.color, token.relPos);
+    if(!ludoIsSafeAbsCell(absIdx)){ // start cells and ★ cells are safe
+      let captured = false;
+      ludoTokens.forEach(v=>{
+        if(v.color===token.color || v.relPos<1 || v.relPos>LUDO_RING_STEPS) return;
+        if(ludoAbsIdx(v.color, v.relPos) === absIdx){
+          v.relPos = 0;
+          captured = true;
+          toast(`${token.color} captured ${v.color}'s token!`);
+        }
+      });
+      if(captured) ludoSoundCapture();
+    }
+  }
+  if(token.relPos === LUDO_FINISH){ toast(`${token.color} got a token home! 🏠`); ludoSoundHome(); }
+
+  ludoRolling = false;
+  ludoRender();
+
+  const allHome = ludoTokens.filter(t=>t.color===token.color).every(t=>t.relPos===LUDO_FINISH);
+  if(allHome){
+    ludoGameOver = true;
+    document.getElementById('ludoStatus').textContent = `🏆 ${token.color[0].toUpperCase()+token.color.slice(1)} wins!`;
+    toast(`${token.color} wins the game!`);
+    ludoSoundWin();
+    return;
+  }
+
+  if(ludoDiceValue === 6){
+    ludoConsecutiveSixes++;
+    if(ludoConsecutiveSixes >= 3){ ludoConsecutiveSixes = 0; ludoNextTurn(); }
+    else { ludoDiceValue = null; ludoUpdateStatus(); ludoMaybeAiTurn(); }
+  } else {
+    ludoConsecutiveSixes = 0;
+    ludoNextTurn();
+  }
+}
+window.ludoClickToken = function(color, idx){
+  if(ludoGameOver || !ludoDiceValue) return;
+  const p = ludoCurrentPlayer();
+  if(p.isAi || p.color !== color) return;
+  const token = ludoTokens.find(t=>t.color===color && t.idx===idx);
+  const movable = ludoMovableTokens(color, ludoDiceValue);
+  if(!movable.includes(token)) return;
+  ludoMoveToken(token, ludoDiceValue);
+};
+function ludoNextTurn(){
+  ludoDiceValue = null;
+  ludoTurnIdx = (ludoTurnIdx+1) % ludoPlayers.length;
+  ludoUpdateStatus();
+  ludoRender();
+  ludoMaybeAiTurn();
+}
+function ludoMaybeAiTurn(){
+  if(ludoGameOver) return;
+  const p = ludoCurrentPlayer();
+  if(p.isAi){
+    document.getElementById('ludoHint').textContent = 'Computer is playing...';
+    setTimeout(ludoAnimateDiceThenRoll, 700);
+  }
+}
+
+// Work out where every token is drawn (handles stacking on shared cells).
+function ludoLayout(){
+  const C = LUDO_CELL, M = LUDO_MARGIN;
+  const out = [];
+  const groups = {};
+  ludoTokens.forEach(t=>{
+    if(t.relPos === 0){
+      const s = LUDO_YARD_SLOTS[t.color][t.idx % 4];
+      out.push({ t, x: M+s.col*C, y: M+s.row*C, r: C*0.5 });
+    } else if(t.relPos >= LUDO_FINISH){
+      const same = ludoTokens.filter(o=>o.color===t.color && o.relPos>=LUDO_FINISH);
+      const k = same.indexOf(t), n = same.length;
+      const f = LUDO_FINISH_SPOT[t.color];
+      const off = (k-(n-1)/2)*C*0.42;
+      out.push({ t, x: M+f.col*C + (f.axis==='x'?off:0), y: M+f.row*C + (f.axis==='y'?off:0), r: C*0.2 });
+    } else {
+      const cell = ludoCellForToken(t);
+      const key = cell.row+','+cell.col;
+      (groups[key] = groups[key] || []).push({ t, cell });
+    }
+  });
+  Object.values(groups).forEach(g=>{
+    const n = g.length;
+    g.forEach((e,k)=>{
+      const cx = M+(e.cell.col+0.5)*C, cy = M+(e.cell.row+0.5)*C;
+      if(n === 1){ out.push({ t:e.t, x:cx, y:cy, r:C*0.34 }); return; }
+      const a = (k/n)*Math.PI*2 - Math.PI/2;
+      out.push({ t:e.t, x: cx+Math.cos(a)*C*0.19, y: cy+Math.sin(a)*C*0.19, r: C*(n>2?0.22:0.25) });
+    });
+  });
+  if(ludoAnimToken){
+    const hit = out.find(e=>e.t.color===ludoAnimToken.color && e.t.idx===ludoAnimToken.idx);
+    if(hit){ hit.x = ludoAnimToken.x; hit.y = ludoAnimToken.y; hit.r = LUDO_CELL*0.34; }
+  }
+  return out;
+}
+
+function ludoRender(movableHighlight){
+  const canvas = document.getElementById('ludoCanvas');
+  const ctx = canvas.getContext('2d');
+  const C = LUDO_CELL, M = LUDO_MARGIN;
+  const size = LUDO_GRID*C + M*2;
+  const X = v => M + v*C;             // cell coordinate -> pixel
+  const cx = (col) => X(col+0.5), cy = (row) => X(row+0.5);
+
+  ctx.clearRect(0,0,size,size);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0,0,size,size);
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+    ctx.closePath();
+  }
+  function cellRect(row,col,fill){
+    ctx.fillStyle = fill;
+    ctx.fillRect(X(col), X(row), C, C);
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+    ctx.strokeRect(X(col), X(row), C, C);
+  }
+  function star(x,y,ro,ri){
+    ctx.beginPath();
+    for(let k=0;k<10;k++){
+      const r = k%2===0 ? ro : ri;
+      const a = -Math.PI/2 + k*Math.PI/5;
+      const px = x+Math.cos(a)*r, py = y+Math.sin(a)*r;
+      k===0 ? ctx.moveTo(px,py) : ctx.lineTo(px,py);
+    }
+    ctx.closePath();
+  }
+  function chevron(x,y,dx,dy,color){
+    const px=-dy, py=dx;
+    const tip = {x:x+dx*C*0.16, y:y+dy*C*0.16};
+    const w1  = {x:x-dx*C*0.14+px*C*0.24, y:y-dy*C*0.14+py*C*0.24};
+    const w2  = {x:x-dx*C*0.14-px*C*0.24, y:y-dy*C*0.14-py*C*0.24};
+    ctx.strokeStyle = color; ctx.lineWidth = 2.6; ctx.lineCap='round'; ctx.lineJoin='round';
+    ctx.beginPath(); ctx.moveTo(w1.x,w1.y); ctx.lineTo(tip.x,tip.y); ctx.lineTo(w2.x,w2.y); ctx.stroke();
+    ctx.lineCap='butt'; ctx.lineJoin='miter';
+  }
+
+  // ---- yards: big colour block, white pad, four token discs ----
+  LUDO_ALL_COLORS.forEach(color=>{
+    const o = LUDO_YARD_ORIGIN[color];
+    ctx.fillStyle = LUDO_COLORS[color].hex;
+    ctx.fillRect(X(o.col), X(o.row), 6*C, 6*C);
+    ctx.fillStyle = '#fff';
+    roundRect(X(o.col+0.8), X(o.row+0.8), 4.4*C, 4.4*C, 0.7*C);
+    ctx.fill();
+    LUDO_YARD_SLOTS[color].forEach(s=>{
+      ctx.beginPath();
+      ctx.arc(X(s.col), X(s.row), C*0.7, 0, Math.PI*2);
+      ctx.fillStyle = LUDO_COLORS[color].hex;
+      ctx.fill();
+    });
+  });
+
+  // ---- ring cells (white, black grid lines) ----
+  LUDO_PATH.forEach(c=> cellRect(c.row, c.col, '#fff'));
+  // coloured start cells
+  LUDO_ALL_COLORS.forEach(color=>{
+    const c = LUDO_PATH[LUDO_COLORS[color].start];
+    cellRect(c.row, c.col, LUDO_COLORS[color].hex);
+  });
+  // coloured home columns
+  LUDO_ALL_COLORS.forEach(color=>{
+    ludoHomeCells(color).forEach(c=> cellRect(c.row, c.col, LUDO_COLORS[color].hex));
+  });
+  // star (safe) cells
+  LUDO_STAR_IDX.forEach(i=>{
+    const c = LUDO_PATH[i];
+    star(cx(c.col), cy(c.row), C*0.36, C*0.15);
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.3; ctx.lineJoin = 'round'; ctx.stroke(); ctx.lineJoin='miter';
+  });
+  // entry arrows on the outer edge
+  chevron(cx(0),  cy(7),  1, 0, LUDO_COLORS.green.hex);
+  chevron(cx(7),  cy(0),  0, 1, LUDO_COLORS.yellow.hex);
+  chevron(cx(14), cy(7), -1, 0, LUDO_COLORS.blue.hex);
+  chevron(cx(7),  cy(14), 0,-1, LUDO_COLORS.red.hex);
+
+  // ---- centre: four triangles meeting in the middle ----
+  const P = (r,c)=>({x:X(c), y:X(r)});
+  const mid = P(7.5,7.5);
+  const tri = {
+    green:  [P(6,6), P(9,6), mid],
+    yellow: [P(6,6), P(6,9), mid],
+    blue:   [P(6,9), P(9,9), mid],
+    red:    [P(9,6), P(9,9), mid]
+  };
+  LUDO_ALL_COLORS.forEach(color=>{
+    const pts = tri[color];
+    ctx.beginPath(); ctx.moveTo(pts[0].x,pts[0].y); ctx.lineTo(pts[1].x,pts[1].y); ctx.lineTo(pts[2].x,pts[2].y); ctx.closePath();
+    ctx.fillStyle = LUDO_COLORS[color].hex; ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1; ctx.stroke();
+  });
+
+  // ---- board outline ----
+  ctx.strokeStyle = '#000'; ctx.lineWidth = 2;
+  ctx.strokeRect(M, M, LUDO_GRID*C, LUDO_GRID*C);
+
+  // ---- tokens ----
+  const movableSet = new Set((movableHighlight||[]).map(t=>t.color+t.idx));
+  const layout = ludoLayout();
+  layout.forEach(e=>{
+    const hot = movableSet.has(e.t.color+e.t.idx);
+    if(hot){
+      ctx.beginPath(); ctx.arc(e.x, e.y, e.r+3, 0, Math.PI*2);
+      ctx.strokeStyle = '#000'; ctx.lineWidth = 5; ctx.stroke();
+      ctx.strokeStyle = '#FFC400'; ctx.lineWidth = 3; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+    ctx.fillStyle = LUDO_COLORS[e.t.color].hex; ctx.fill();
+    ctx.strokeStyle = '#111'; ctx.lineWidth = 1.6; ctx.stroke();
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r*0.55, 0, Math.PI*2);
+    ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.6; ctx.stroke();
+  });
+
+  canvas.onclick = function(ev){
+    if(!movableHighlight || !movableHighlight.length) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = (ev.clientX-rect.left)*(size/rect.width), my = (ev.clientY-rect.top)*(size/rect.height);
+    for(const e of layout.slice().reverse()){
+      if(!movableHighlight.includes(e.t)) continue;
+      if(Math.hypot(mx-e.x, my-e.y) < Math.max(e.r+4, C*0.5)){
+        window.ludoClickToken(e.t.color, e.t.idx);
+        return;
+      }
+    }
+  };
+}
+
+/* ================== GAMES HUB CONTROLLER ================== */
+let carromLazyDone = false, chessLazyDone = false, tttLazyDone = false;
+window.openGame = function(name){
+  document.getElementById('overlay-'+name).classList.add('show');
+  if(name === 'carrom'){
+    if(!carromLazyDone){ newCarromGame(); carromLazyDone = true; }
+    carromActive = true;
+    if(!carromAnimHandle) carromLoop();
+  }
+  if(name === 'ttt' && !tttLazyDone){ tttNewGame(); tttLazyDone = true; }
+  if(name === 'chess' && !chessLazyDone){ chessNewGame(); chessLazyDone = true; }
+  if(name === 'ludo'){
+    if(document.getElementById('ludoGame').style.display !== 'block'){
+      ludoSetupConfigUI();
+    }
+  }
+};
+window.closeGame = function(name){
+  document.getElementById('overlay-'+name).classList.remove('show');
+  if(name === 'carrom') carromActive = false;
+};
+
+/* ================== EMOJIS (chat + in-game reactions) ================== */
+const EMOJI_LIST = ['😀','😁','😂','🤣','😊','😍','😘','😜','🤔','😎','😴','😭','😡','🥳','🎉','🔥','💯','👍','👎','👏','🙌','🙏','❤️','💔','😢','😱','🤗','😏','🏆','🎲','🃏','🥁','🎯','⚡','✨','💪'];
+let emojiPickerEl = null;
+let emojiPickerCallback = null;
+function ensureEmojiPicker(){
+  if(emojiPickerEl) return emojiPickerEl;
+  const el = document.createElement('div');
+  el.className = 'emoji-picker';
+  el.innerHTML = EMOJI_LIST.map(e=>`<button type="button">${e}</button>`).join('');
+  el.addEventListener('click', (ev)=>{
+    const btn = ev.target.closest('button');
+    if(!btn) return;
+    const emoji = btn.textContent;
+    const cb = emojiPickerCallback;
+    closeEmojiPicker();
+    if(cb) cb(emoji);
+  });
+  document.body.appendChild(el);
+  emojiPickerEl = el;
+  return el;
+}
+function closeEmojiPicker(){
+  if(emojiPickerEl) emojiPickerEl.classList.remove('show');
+  emojiPickerCallback = null;
+}
+window.toggleEmojiPicker = function(anchorId, onPick){
+  const el = ensureEmojiPicker();
+  if(el.classList.contains('show') && el.dataset.anchor === anchorId){
+    closeEmojiPicker();
+    return;
+  }
+  const anchor = document.getElementById(anchorId);
+  if(!anchor) return;
+  const rect = anchor.getBoundingClientRect();
+  const left = Math.max(8, Math.min(window.innerWidth-270, rect.left));
+  const wantTop = rect.top - 250;
+  const top = wantTop > 8 ? wantTop : rect.bottom + 8;
+  el.style.left = left + 'px';
+  el.style.top = top + 'px';
+  el.dataset.anchor = anchorId;
+  el.classList.add('show');
+  emojiPickerCallback = onPick;
+};
+document.addEventListener('click', (e)=>{
+  if(!emojiPickerEl || !emojiPickerEl.classList.contains('show')) return;
+  if(emojiPickerEl.contains(e.target)) return;
+  if(e.target.closest('.emoji-btn')) return; // the toggle button handles its own click
+  closeEmojiPicker();
+});
+function insertEmojiIntoInput(inputEl, emoji){
+  if(!inputEl) return;
+  const start = inputEl.selectionStart != null ? inputEl.selectionStart : inputEl.value.length;
+  const end = inputEl.selectionEnd != null ? inputEl.selectionEnd : inputEl.value.length;
+  inputEl.value = inputEl.value.slice(0,start) + emoji + inputEl.value.slice(end);
+  const pos = start + emoji.length;
+  inputEl.focus();
+  inputEl.setSelectionRange(pos,pos);
+  autoGrow(inputEl);
+}
+window.openChatEmoji = function(){
+  toggleEmojiPicker('chatEmojiBtn', (emoji)=>{
+    insertEmojiIntoInput(document.getElementById('msgInput'), emoji);
+    notifyTyping(currentRoom);
+  });
+};
+window.openGroupEmoji = function(){
+  toggleEmojiPicker('groupEmojiBtn', (emoji)=>{
+    insertEmojiIntoInput(document.getElementById('groupMsgInput'), emoji);
+    if(myGroupId) notifyTyping('group_'+myGroupId);
+  });
+};
+window.openGameEmoji = function(gameName){
+  toggleEmojiPicker(gameName+'EmojiBtn', (emoji)=>{
+    showGameReaction(gameName, emoji);
+  });
+};
+function showGameReaction(gameName, emoji){
+  const overlay = document.getElementById('overlay-'+gameName);
+  if(!overlay) return;
+  const pop = document.createElement('div');
+  pop.className = 'game-reaction-pop';
+  pop.textContent = emoji;
+  overlay.appendChild(pop);
+  setTimeout(()=> pop.remove(), 1450);
+}
+</script>
+</body>
+</html>
